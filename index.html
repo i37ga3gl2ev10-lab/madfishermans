@@ -256,6 +256,32 @@
                   0 4px 10px rgba(0,0,0,.45);
     }
 
+  
+    /* ===== 모바일(특히 iOS) 스크롤 안정화 패치 (필수) ===== */
+    html, body { height: 100%; }
+    body { overflow: hidden; }
+
+    .wrap{
+      height: calc(100dvh - 58px) !important; /* 모바일 주소창/툴바 변동 대응 */
+      min-height: 0 !important;               /* grid 안 overflow 활성화 */
+    }
+    #map, aside{ min-height: 0 !important; }
+
+    aside{
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      touch-action: pan-y;
+    }
+
+    @media (max-width: 980px){
+      .sticky-tools{ position: static !important; } /* iOS에서 sticky가 스크롤을 막는 경우 방지 */
+      .wrap{ height: calc(100dvh - 58px) !important; grid-template-columns: 1fr !important; }
+      #map{ height: 56dvh !important; }
+      aside{ height: calc(44dvh - env(safe-area-inset-bottom)) !important; border-left:none !important; border-top:1px solid var(--line) !important; }
+    }
+
   </style>
 </head>
 
