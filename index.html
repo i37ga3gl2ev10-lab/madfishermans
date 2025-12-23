@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎣 자주가는 항구 지도 · 선사 노트</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root{
+      --ink:#eaf2f6;           /* 글자(아이보리) */
+      --muted:rgba(234,242,246,.72);
+      --line:rgba(255,255,255,.18);
+      --glass:rgba(20,30,36,.42);     /* 유리 패널 */
+      --glass2:rgba(20,30,36,.28);
+      --accent:#2fd3c6;        /* 청록 포인트 */
+      --accent2:#7bd0ff;       /* 보조 포인트 */
+      --danger:#ff6b6b;
+      --shadow: 0 18px 44px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Noto Sans KR",sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 480px at 20% 0%, rgba(47,211,198,.20), transparent 55%),
+        radial-gradient(900px 420px at 90% 10%, rgba(123,208,255,.18), transparent 55%),
+        linear-gradient(180deg, #0b1217 0%, #0a0f14 100%);
+    }
+
+    header{
+      position: sticky; top:0; z-index: 50;
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+      background: rgba(8,12,16,.55);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      display:flex; justify-content:space-between; gap:12px; align-items:center;
+    }
+    .title{ font-weight:900; letter-spacing:-.2px; }
+    .sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+
+    .wrap{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      height: calc(100vh - 58px);
+    }
+
+    /* Map 영역 */
+    #map{
+      width:100%;
+      height:100%;
+      position:relative;
+      overflow:hidden;
+    }
+    /* 지도 위에 “해무” 느낌 오버레이 */
+    .fog{
+      pointer-events:none;
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 420px at 30% 20%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(900px 520px at 70% 30%, rgba(255,255,255,.08), transparent 65%),
+        linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.22));
+      mix-blend-mode: screen;
+      opacity:.55;
+      z-index: 400;
+    }
+    .map-vignette{
+      pointer-events:none;
+      position:absolute; inset:0;
+      background:
+        radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0,0,0,.45) 100%);
+      opacity:.55;
+      z-index: 401;
+    }
+
+    aside{
+      border-left:1px solid var(--line);
+      padding:14px;
+      overflow:auto;
+      background: linear-gradient(180deg, rgba(8,12,16,.35), rgba(8,12,16,.65));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--glass);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      box-shadow: var(--shadow);
+      padding:12px;
+      margin:10px 0;
+    }
+    .card.soft{
+      background: var(--glass2);
+      box-shadow: 0 12px 32px rgba(0,0,0,.22);
+    }
+
+    .muted{ color:var(--muted); font-size:13px; }
+    .small{ color:var(--muted); font-size:12px; }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .sep{ height:1px; background: var(--line); border:0; margin:10px 0; }
+
+    .btn{
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight:900;
+      transition: .12s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{
+      border-color: rgba(47,211,198,.35);
+      background: rgba(47,211,198,.14);
+      color: var(--ink);
+    }
+    .btn.primary:hover{ background: rgba(47,211,198,.18); }
+    .btn.danger{
+      border-color: rgba(255,107,107,.35);
+      background: rgba(255,107,107,.12);
+    }
+    .btn.danger:hover{ background: rgba(255,107,107,.16); }
+
+    .btn.tiny{ padding:8px 10px; border-radius:12px; }
+    h2{ margin:0 0 6px; font-size:16px; letter-spacing:-.3px; }
+    h3{ margin:0 0 8px; font-size:14px; letter-spacing:-.2px; }
+
+    .sticky-tools{
+      position: sticky; top: 0;
+      padding: 8px 0;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(8,12,16,.65), rgba(8,12,16,0));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .ship{
+      display:grid; gap:10px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+    }
+    .ship .top{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .ship .name{ font-weight:900; }
+    .ship .meta{ color:var(--muted); font-size:12px; margin-top:3px; }
+    .ship a{ color: var(--accent2); text-decoration:none; font-weight:900; }
+    .ship a:hover{ text-decoration:underline; }
+
+    .tag{
+      display:inline-flex; align-items:center;
+      padding:4px 10px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:999px;
+      font-size:12px;
+      color:rgba(234,242,246,.85);
+      background: rgba(255,255,255,.06);
+    }
+
+    .fav{
+      cursor:pointer; user-select:none;
+      font-size:18px; line-height:1;
+      padding:2px 6px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+    }
+    .fav.on{
+      border-color: rgba(47,211,198,.45);
+      background: rgba(47,211,198,.16);
+    }
+
+    textarea, input, select{
+      width:100%;
+      border:1px solid rgba(255,255,255,.20);
+      border-radius: 14px;
+      padding:10px;
+      font:inherit;
+      color: var(--ink);
+      background: rgba(0,0,0,.18);
+    }
+    textarea{ min-height:44px; resize:vertical; }
+    textarea:focus, input:focus, select:focus{
+      outline:none;
+      border-color: rgba(47,211,198,.55);
+      box-shadow: 0 0 0 4px rgba(47,211,198,.16);
+    }
+
+    .checks{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .checks label{ display:flex; gap:6px; align-items:center; font-size:13px; color:var(--muted); }
+
+    .editbox{
+      border:1px dashed rgba(47,211,198,.35);
+      border-radius: 16px;
+      padding:10px;
+      background: rgba(47,211,198,.06);
+    }
+
+    /* Leaflet 툴팁/컨트롤 톤 다운 */
+    .leaflet-control-zoom a{
+      background: rgba(20,30,36,.55) !important;
+      color: var(--ink) !important;
+      border: 1px solid rgba(255,255,255,.18) !important;
+      backdrop-filter: blur(10px);
+    }
+    .leaflet-tooltip{
+      background: rgba(20,30,36,.72);
+      border:1px solid rgba(255,255,255,.18);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+    }
+
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+      aside{ border-left:none; border-top:1px solid var(--line); height:44vh; }
+      #map{ height:56vh; }
+    }
+  
+    /* ===== 모바일(특히 iOS) 스크롤 안정화 패치 ===== */
+    html, body { height: 100%; }
+    body { overflow: hidden; }
+
+    .wrap{
+      /* 모바일 주소창/툴바 변동을 반영하는 dvh 사용 */
+      height: calc(100dvh - 58px);
+      min-height: 0;
+    }
+    #map, aside{ min-height: 0; }
+
+    aside{
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      touch-action: pan-y;
+    }
+
+    @media (max-width: 980px){
+      /* iOS에서 overflow 컨테이너 안 sticky가 스크롤을 방해하는 경우가 있어 모바일에서는 해제 */
+      .sticky-tools{ position: static; }
+      .wrap{ height: calc(100dvh - 58px); }
+      #map{ height: 56dvh; }
+      aside{ height: calc(44dvh - env(safe-area-inset-bottom)); }
+    }
+
+  </style>
+</head>
+
+<body>
+<header>
+  <div>
+    <div class="title">🌫️ 자주가는 항구 지도 · 선사 노트</div>
+    <div class="sub">항구(⚓) 클릭 → 선사 목록 / 편집·삭제 / 즐겨찾기⭐ / 태그필터 / 한줄평</div>
+  </div>
+  <div class="row">
+    <button class="btn danger" id="btnResetAll" title="저장 데이터 전체 초기화">전체 초기화</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="map">
+    <div class="fog"></div>
+    <div class="map-vignette"></div>
+  </div>
+
+  <aside id="panel">
+    <div class="card">
+      <div class="muted">지도에서 항구 마커(⚓)를 누르면 선사 목록이 뜹니다.</div>
+      <hr class="sep">
+      <div class="small">저장 위치: 이 브라우저(localStorage). 다른 기기/브라우저로 옮기려면 내보내기 기능을 붙이면 됩니다.</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  // 태그(요청사항)
+  const TAGS = ["주꾸미","갑오징어","문어","광어","참돔","백조기"];
+
+
+  // 항구(좌표 포함)
+  const PORTS = [
+    { id:"ocheon", name:"오천항", region:"충남 보령", lat:36.439312581, lng:126.5207654562 },
+    { id:"mageompo", name:"마검포항", region:"충남 태안", lat:36.619986, lng:126.287276 },
+    { id:"yeongmok", name:"영목항", region:"충남 태안(고남면)", lat:36.398959, lng:126.426825 },
+    { id:"bieung", name:"비응항", region:"전북 군산", lat:35.938583, lng:126.531205 },
+    { id:"daecheon", name:"대천항", region:"충남 보령", lat:36.327479, lng:126.509662 },
+    { id:"muchangpo", name:"무창포항", region:"충남 보령", lat:36.248616, lng:126.536757 },
+    { id:"incheon-yeonan", name:"인천 연안부두", region:"인천 중구", lat:37.455552117, lng:126.6018306996 },
+    { id:"gumae", name:"구매항", region:"충남 태안(고남면)", lat:36.424932, lng:126.432031 },
+    { id:"namdang", name:"남당항", region:"충남 홍성", lat:36.5359, lng:126.4664 },
+    { id:"hongwon", name:"홍원항", region:"충남 서천", lat:36.157929, lng:126.500136 },
+    { id:"nokdong", name:"녹동항", region:"전남 고흥", lat:34.526555, lng:127.131535 }
+  ];
+
+  function ship(id, name, phone, url, tags, favorite, review){
+    return { id, name, phone, url, tags: tags || [], favorite: !!favorite, review: review || "" };
+  }
+
+  // 기본 선사(예시)
+  const DEFAULT_SHIPS_BY_PORT = {
+    "ocheon": [
+      ship("base-ocheon-1", "오천 ○○호", "010-0000-0000", "https://example.com", ["주꾸미","광어"], false, ""),
+      ship("base-ocheon-2", "오천 △△호", "010-1111-1111", "https://example.com", ["주꾸미"], false, "")
+    ],
+    "daecheon": [
+      ship("base-daecheon-1", "대천 ○○호", "010-5555-5555", "https://example.com", ["주꾸미"], false, ""),
+      ship("base-daecheon-2", "대천 △△호", "010-6666-6666", "https://example.com", ["광어"], false, "")
+    ],
+    "mageompo": [],
+    "yeongmok": [],
+    "bieung": [],
+    "muchangpo": [],
+    "incheon-yeonan": [],
+    "gumae": [],
+    "namdang": [],
+    "hongwon": [],
+  };
+
+  // 저장(기본도 편집/삭제 가능하게 통합 저장)
+  const LS_SHIPS = "fishing_all_ships_v1";
+  function safeParse(s, fallback){ try { return JSON.parse(s); } catch { return fallback; } }
+  function loadAllShips(){ const raw = localStorage.getItem(LS_SHIPS); return raw ? safeParse(raw, null) : null; }
+  function saveAllShips(obj){ localStorage.setItem(LS_SHIPS, JSON.stringify(obj)); }
+
+  function ensureInitialized(){
+    const existing = loadAllShips();
+    if (existing) return;
+    const init = {};
+    PORTS.forEach(p => { init[p.id] = (DEFAULT_SHIPS_BY_PORT[p.id] || []); });
+    saveAllShips(init);
+  }
+  function getShips(portId){
+    ensureInitialized();
+    const all = loadAllShips() || {};
+    return (all[portId] || []);
+  }
+  function setShips(portId, ships){
+    ensureInitialized();
+    const all = loadAllShips() || {};
+    all[portId] = ships;
+    saveAllShips(all);
+  }
+  function resetAll(){ localStorage.removeItem(LS_SHIPS); }
+
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function openNaverSearch(q){ window.open(`https://map.naver.com/v5/search/${encodeURIComponent(q)}`, "_blank", "noopener"); }
+  function openKakaoSearch(q){ window.open(`https://map.kakao.com/link/search/${encodeURIComponent(q)}`, "_blank", "noopener"); }
+
+  function cryptoRandomId(){
+    const a = new Uint32Array(2);
+    crypto.getRandomValues(a);
+    return (a[0].toString(16) + a[1].toString(16));
+  }
+
+  function normalizeTags(tags){
+    const set = new Set((tags || []).filter(t => TAGS.includes(t)));
+    return Array.from(set);
+  }
+
+  const panel = document.getElementById("panel");
+  let currentPort = null;
+  let currentFilter = "전체";
+
+  function sortShips(ships){
+    return [...ships].sort((a,b) => {
+      const fa = a.favorite ? 1 : 0;
+      const fb = b.favorite ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return String(a.name||"").localeCompare(String(b.name||""), "ko");
+    });
+  }
+  function applyFilter(ships){
+    if (currentFilter === "전체") return ships;
+    return ships.filter(s => (s.tags || []).includes(currentFilter));
+  }
+  function cssEscape(s){ return String(s).replaceAll('"','\\"'); }
+
+  function renderTagChecks(prefix, selectedTags){
+    const sel = new Set(selectedTags || []);
+    return TAGS.map(t => {
+      const id = `${prefix}-${t}`;
+      return `<label><input type="checkbox" id="${id}" ${sel.has(t)?"checked":""}/> ${t}</label>`;
+    }).join("");
+  }
+
+  function renderPort(port){
+    currentPort = port;
+
+    const shipsRaw = getShips(port.id);
+    const shipsFiltered = applyFilter(sortShips(shipsRaw));
+
+    panel.innerHTML = `
+      <div class="sticky-tools">
+        <div class="card">
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div>
+              <h2 style="margin:0;">${escapeHtml(port.name)}</h2>
+              <div class="muted">${escapeHtml(port.region)} · 선사 ${shipsRaw.length}개</div>
+            </div>
+            <div class="row">
+              <button class="btn tiny" id="btnNaver">네이버지도</button>
+              <button class="btn tiny" id="btnKakao">카카오맵</button>
+            </div>
+          </div>
+
+          <hr class="sep">
+
+          <div class="row" style="justify-content:space-between;">
+            <div style="flex:1; min-width:220px;">
+              <label class="small" for="filterSel" style="display:block; margin-bottom:6px;">🎯 오늘 목표(필터)</label>
+              <select id="filterSel">
+                <option ${currentFilter==="전체"?"selected":""}>전체</option>
+                ${TAGS.map(t => `<option ${currentFilter===t?"selected":""}>${t}</option>`).join("")}
+              </select>
+            </div>
+            <div style="min-width:180px;">
+              <label class="small" style="display:block; margin-bottom:6px;">📌 정렬</label>
+              <div class="small">즐겨찾기⭐가 항상 위로</div>
+            </div>
+          </div>
+
+          <hr class="sep">
+
+          <h3>➕ 선사 추가</h3>
+          <div class="row">
+            <div style="flex:1; min-width:160px;">
+              <input id="addName" placeholder="선사/배 이름 (예: ○○호)" />
+            </div>
+            <div style="flex:1; min-width:160px;">
+              <input id="addPhone" placeholder="전화 (예: 010-1234-5678)" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div style="flex:1; min-width:220px;">
+              <input id="addUrl" placeholder="예약/정보 링크 (선택)" />
+            </div>
+            <button class="btn primary" id="btnAddShip">추가</button>
+          </div>
+
+          <div class="checks" style="margin-top:8px;">
+            <span class="small">태그:</span>
+            ${renderTagChecks("addTag", [])}
+            <span class="small">(필터에 사용)</span>
+          </div>
+
+          <div class="small" style="margin-top:8px;">추가/편집/삭제/즐겨찾기/한줄평은 이 기기 브라우저에 저장됩니다.</div>
+        </div>
+      </div>
+
+      <div class="card soft">
+        <h3 style="margin-bottom:10px;">🚤 선사 목록</h3>
+        <div id="shipList" style="display:grid; gap:10px;"></div>
+        ${shipsFiltered.length===0 ? `<div class="muted" style="margin-top:10px;">필터 조건에 맞는 선사가 없습니다.</div>` : ``}
+      </div>
+    `;
+
+    panel.querySelector("#btnNaver").addEventListener("click", () => openNaverSearch(port.name));
+    panel.querySelector("#btnKakao").addEventListener("click", () => openKakaoSearch(port.name));
+
+    panel.querySelector("#filterSel").addEventListener("change", (e) => {
+      currentFilter = e.target.value;
+      renderPort(port);
+    });
+
+    panel.querySelector("#btnAddShip").addEventListener("click", () => {
+      const name = (panel.querySelector("#addName").value || "").trim();
+      const phone = (panel.querySelector("#addPhone").value || "").trim();
+      const url = (panel.querySelector("#addUrl").value || "").trim();
+      if (!name){ alert("선사/배 이름을 입력하세요."); return; }
+
+      const tags = [];
+      TAGS.forEach(t => {
+        const id = `addTag-${t}`;
+        const el = panel.querySelector(`#${cssEscape(id)}`);
+        if (el && el.checked) tags.push(t);
+      });
+
+      const ships = getShips(port.id);
+      ships.unshift(ship("user-" + cryptoRandomId(), name, phone, url, normalizeTags(tags), false, ""));
+      setShips(port.id, ships);
+      renderPort(port);
+    });
+
+    renderShipList(port);
+  }
+
+  function renderShipList(port){
+    const host = panel.querySelector("#shipList");
+    if (!host) return;
+
+    const shipsAll = getShips(port.id);
+    const ships = applyFilter(sortShips(shipsAll));
+
+    host.innerHTML = ships.map(s => {
+      const link = s.url ? ` · <a href="${s.url}" target="_blank" rel="noopener">예약/정보 링크</a>` : "";
+      const tags = (s.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(" ");
+
+      return `
+        <div class="ship" data-id="${escapeHtml(s.id)}">
+          <div class="top">
+            <div>
+              <div class="name">${escapeHtml(s.name)}</div>
+              <div class="meta">☎ ${escapeHtml(s.phone || "-")}${link}</div>
+              <div class="row" style="margin-top:8px;">${tags || `<span class="tag">태그 없음</span>`}</div>
+            </div>
+
+            <div class="row" style="align-items:flex-start;">
+              <div class="fav ${s.favorite ? "on" : ""}" title="즐겨찾기" data-fav="${escapeHtml(s.id)}">${s.favorite ? "⭐" : "☆"}</div>
+              <button class="btn tiny" data-edit="${escapeHtml(s.id)}">편집</button>
+              <button class="btn tiny danger" data-del="${escapeHtml(s.id)}">삭제</button>
+            </div>
+          </div>
+
+          <div>
+            <textarea maxlength="140" data-review="${escapeHtml(s.id)}"
+              placeholder="한줄평(예: 친절/출항 빠름/자리추첨 공정/포인트 좋음 등)">${escapeHtml(s.review || "")}</textarea>
+            <div class="small">저장: 자동</div>
+          </div>
+
+          <div class="editbox" style="display:none;" data-editbox="${escapeHtml(s.id)}">
+            <div class="row">
+              <div style="flex:1; min-width:160px;">
+                <input data-e-name="${escapeHtml(s.id)}" placeholder="이름" value="${escapeHtml(s.name || "")}" />
+              </div>
+              <div style="flex:1; min-width:160px;">
+                <input data-e-phone="${escapeHtml(s.id)}" placeholder="전화" value="${escapeHtml(s.phone || "")}" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <div style="flex:1; min-width:220px;">
+                <input data-e-url="${escapeHtml(s.id)}" placeholder="예약/정보 링크" value="${escapeHtml(s.url || "")}" />
+              </div>
+            </div>
+
+            <div class="checks" style="margin-top:10px;">
+              <span class="small">태그:</span>
+              ${TAGS.map(t => `
+                <label>
+                  <input type="checkbox" data-e-id="${escapeHtml(s.id)}" data-e-tag="${escapeHtml(t)}" ${s.tags?.includes(t) ? "checked":""}/>
+                  ${escapeHtml(t)}
+                </label>
+              `).join("")}
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+              <button class="btn primary tiny" data-save="${escapeHtml(s.id)}">저장</button>
+              <button class="btn tiny" data-cancel="${escapeHtml(s.id)}">취소</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // 즐겨찾기
+    host.querySelectorAll("[data-fav]").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.getAttribute("data-fav");
+        const ships = getShips(port.id);
+        const idx = ships.findIndex(x => x.id === id);
+        if (idx < 0) return;
+        ships[idx].favorite = !ships[idx].favorite;
+        setShips(port.id, ships);
+        renderPort(port);
+      });
+    });
+
+    // 한줄평 자동 저장
+    host.querySelectorAll("textarea[data-review]").forEach(t => {
+      t.addEventListener("input", () => {
+        const id = t.getAttribute("data-review");
+        const ships = getShips(port.id);
+        const idx = ships.findIndex(x => x.id === id);
+        if (idx < 0) return;
+        ships[idx].review = (t.value || "").slice(0, 140);
+        setShips(port.id, ships);
+      });
+    });
+
+    // 삭제
+    host.querySelectorAll("button[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del");
+        const ok = confirm("이 선사를 삭제할까요? (즐겨찾기/한줄평 포함)");
+        if (!ok) return;
+        const ships = getShips(port.id).filter(x => x.id !== id);
+        setShips(port.id, ships);
+        renderPort(port);
+      });
+    });
+
+    // 편집 토글
+    host.querySelectorAll("button[data-edit]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit");
+        const box = host.querySelector(`[data-editbox="${cssEscape(id)}"]`);
+        if (!box) return;
+        const isOpen = box.style.display !== "none";
+        host.querySelectorAll("[data-editbox]").forEach(b => b.style.display = "none");
+        box.style.display = isOpen ? "none" : "block";
+      });
+    });
+
+    host.querySelectorAll("button[data-cancel]").forEach(btn => {
+      btn.addEventListener("click", () => renderPort(port));
+    });
+
+    // 편집 저장
+    host.querySelectorAll("button[data-save]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-save");
+        const ships = getShips(port.id);
+        const idx = ships.findIndex(x => x.id === id);
+        if (idx < 0) return;
+
+        const name = host.querySelector(`[data-e-name="${cssEscape(id)}"]`)?.value?.trim() || "";
+        const phone = host.querySelector(`[data-e-phone="${cssEscape(id)}"]`)?.value?.trim() || "";
+        const url = host.querySelector(`[data-e-url="${cssEscape(id)}"]`)?.value?.trim() || "";
+        if (!name){ alert("이름은 비워둘 수 없어요."); return; }
+
+        const tags = [];
+        host.querySelectorAll(`input[type="checkbox"][data-e-id="${cssEscape(id)}"]`).forEach(chk => {
+          if (chk.checked) tags.push(chk.getAttribute("data-e-tag"));
+        });
+
+        ships[idx].name = name;
+        ships[idx].phone = phone;
+        ships[idx].url = url;
+        ships[idx].tags = normalizeTags(tags);
+
+        setShips(port.id, ships);
+        renderPort(port);
+      });
+    });
+  }
+
+  // 지도 생성
+const map = L.map("map", { zoomControl: true }).setView([36.0, 127.4], 7);
+
+// 1) 일반 지도(라벨 잘 보임) - OSM
+const normalLayer = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+  }
+);
+
+// 2) 위성 지도(현장감) - Esri World Imagery
+const satelliteLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 18,
+    attribution: "Tiles © Esri"
+  }
+);
+
+// 기본으로 위성 지도 켜기(원하면 normalLayer로 바꿔도 됨)
+satelliteLayer.addTo(map);
+
+// 레이어 전환 컨트롤(오른쪽 위)
+const baseMaps = {
+  "🛰️ 위성": satelliteLayer,
+  "🗺️ 일반": normalLayer
+};
+L.control.layers(baseMaps, null, { position: "topright" }).addTo(map);
+
+
+  // 항구 마커: ⚓
+  const harborIcon = L.divIcon({ html: "⚓", className: "", iconSize: [28, 28] });
+
+  PORTS.forEach(port => {
+    const marker = L.marker([port.lat, port.lng], { icon: harborIcon }).addTo(map);
+    marker.bindTooltip(port.name, { direction:"top", opacity: 0.95 });
+    marker.on("click", () => renderPort(port));
+  });
+
+  document.getElementById("btnResetAll").addEventListener("click", () => {
+    const ok = confirm("정말 전체 초기화할까요?\n(선사 목록/즐겨찾기/태그/한줄평 모두 삭제)");
+    if (!ok) return;
+    resetAll();
+    alert("초기화 완료. 기본값으로 다시 시작합니다.");
+    currentPort = null;
+    currentFilter = "전체";
+    panel.innerHTML = `
+      <div class="card">
+        <div class="muted">지도에서 항구 마커(⚓)를 누르면 선사 목록이 뜹니다.</div>
+        <hr class="sep">
+        <div class="small">저장 위치: 이 브라우저(localStorage).</div>
+      </div>
+    `;
+    ensureInitialized();
+  });
+</script>
+</body>
+</html>
