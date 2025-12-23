@@ -229,31 +229,31 @@
       #map{ height:56vh; }
     }
   
-    /* ===== 모바일(특히 iOS) 스크롤 안정화 패치 ===== */
-    html, body { height: 100%; }
-    body { overflow: hidden; }
-
-    .wrap{
-      /* 모바일 주소창/툴바 변동을 반영하는 dvh 사용 */
-      height: calc(100dvh - 58px);
-      min-height: 0;
+    /* ===== 항구 마커 숫자 배지 ===== */
+    .harbor-marker{
+      position: relative;
+      width: 28px;
+      height: 28px;
+      font-size: 22px;
+      line-height: 28px;
+      text-align: center;
     }
-    #map, aside{ min-height: 0; }
-
-    aside{
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding-bottom: calc(14px + env(safe-area-inset-bottom));
-      touch-action: pan-y;
-    }
-
-    @media (max-width: 980px){
-      /* iOS에서 overflow 컨테이너 안 sticky가 스크롤을 방해하는 경우가 있어 모바일에서는 해제 */
-      .sticky-tools{ position: static; }
-      .wrap{ height: calc(100dvh - 58px); }
-      #map{ height: 56dvh; }
-      aside{ height: calc(44dvh - env(safe-area-inset-bottom)); }
+    .harbor-badge{
+      position: absolute;
+      top: -6px;
+      right: -10px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 18px;
+      text-align: center;
+      color: #001414;
+      background: #2fd3c6;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.35),
+                  0 4px 10px rgba(0,0,0,.45);
     }
 
   </style>
@@ -497,6 +497,7 @@
       const ships = getShips(port.id);
       ships.unshift(ship("user-" + cryptoRandomId(), name, phone, url, normalizeTags(tags), false, ""));
       setShips(port.id, ships);
+      updateHarborBadge(port.id);
       renderPort(port);
     });
 
@@ -579,6 +580,7 @@
         if (idx < 0) return;
         ships[idx].favorite = !ships[idx].favorite;
         setShips(port.id, ships);
+        updateHarborBadge(port.id);
         renderPort(port);
       });
     });
@@ -652,6 +654,30 @@
     });
   }
 
+  // ===== 항구 마커(⚓) + 선사 개수 배지 =====
+  const harborMarkers = {}; // portId -> Leaflet marker
+
+  function createHarborIcon(shipCount){
+    const badge = shipCount > 0 ? `<span class="harbor-badge">${shipCount}</span>` : "";
+    return L.divIcon({
+      html: `<div class="harbor-marker">⚓${badge}</div>`,
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+  }
+
+  function updateHarborBadge(portId){
+    const marker = harborMarkers[portId];
+    if (!marker) return;
+    const count = getShips(portId).length;
+    marker.setIcon(createHarborIcon(count));
+    // 툴팁도 갱신(열려있지 않아도 다음에 보일 때 최신 값)
+    marker.unbindTooltip();
+    const port = PORTS.find(p => p.id === portId);
+    if (port) marker.bindTooltip(`${port.name} · 선사 ${count}개`, { direction:"top", opacity: 0.95 });
+  }
+
   // 지도 생성
 const map = L.map("map", { zoomControl: true }).setView([36.0, 127.4], 7);
 
@@ -682,15 +708,13 @@ const baseMaps = {
   "🗺️ 일반": normalLayer
 };
 L.control.layers(baseMaps, null, { position: "topright" }).addTo(map);
-
-
-  // 항구 마커: ⚓
-  const harborIcon = L.divIcon({ html: "⚓", className: "", iconSize: [28, 28] });
-
+  // 항구 마커: ⚓ + 선사 개수 배지
   PORTS.forEach(port => {
-    const marker = L.marker([port.lat, port.lng], { icon: harborIcon }).addTo(map);
-    marker.bindTooltip(port.name, { direction:"top", opacity: 0.95 });
+    const count = getShips(port.id).length;
+    const marker = L.marker([port.lat, port.lng], { icon: createHarborIcon(count) }).addTo(map);
+    marker.bindTooltip(`${port.name} · 선사 ${count}개`, { direction:"top", opacity: 0.95 });
     marker.on("click", () => renderPort(port));
+    harborMarkers[port.id] = marker;
   });
 
   document.getElementById("btnResetAll").addEventListener("click", () => {
