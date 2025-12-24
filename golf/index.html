@@ -337,7 +337,7 @@
   const LS_CHECK   = "golf_checklist_v2"; // [{id,label,done,kind}]
   const LS_PREF    = "golf_prefs_v2";     // { checklistOpen, rainyMode, tagFilter }
 
-  const TAGS = ["가성비","난이도↑","그린빠름","바람","코스재밌음","야간","캐디굿","뷰맛집"];
+  const TAGS = ["퍼브릭","회원제","9홀","파3","코스-어려움","코스-보통","코스-쉬움","그린-어려움","그림-보통","그린-쉬움","그린스피드-빠름","그린스피드-약간빠름","그린스피드-보통","바람자주","경치좋음","그늘집맛있음"];
 
   function safeParse(s, fallback){ try { return JSON.parse(s); } catch { return fallback; } }
   function cryptoRandomId(){
@@ -373,13 +373,19 @@
     if (v) return v;
     const defaults = [
       { id:"c1", label:"클럽/골프백", done:false, kind:"base" },
-      { id:"c2", label:"골프화 / 장갑(여분)", done:false, kind:"base" },
-      { id:"c3", label:"볼 / 티 / 볼마커", done:false, kind:"base" },
-      { id:"c4", label:"거리측정기 / 충전", done:false, kind:"base" },
-      { id:"c5", label:"우산 / 레인웨어", done:false, kind:"rain" },
-      { id:"c6", label:"타월(여분) / 장갑 여벌", done:false, kind:"rain" },
-      { id:"c7", label:"선크림/모자/선글라스", done:false, kind:"base" },
-      { id:"c8", label:"간식/물/보온", done:false, kind:"base" }
+      { id:"c2", label:"골프화", done:false, kind:"base" },
+      { id:"c3", label:"골프공", done:false, kind:"base" },
+      { id:"c4", label:"거리측정기/골프워치", done:false, kind:"base" },
+      { id:"c5", label:"우산", done:false, kind:"rain" },
+      { id:"c6", label:"레인웨어", done:false, kind:"rain" },
+      { id:"c7", label:"추가속옷/겉옷", done:false, kind:"rain" },
+      { id:"c8", label:"선크림", done:false, kind:"base" },
+      { id:"c9", label:"간식", done:false, kind:"base" },
+      { id:"c10", label:"모자", done:false, kind:"base" },
+      { id:"c11", label:"선글라스", done:false, kind:"base" },
+      { id:"c12", label:"장갑", done:false, kind:"base" },
+      { id:"c13", label:"볼마커", done:false, kind:"base" },
+      { id:"c14", label:"현금(캐디피)", done:false, kind:"base" }
     ];
     localStorage.setItem(LS_CHECK, JSON.stringify(defaults));
     return defaults;
