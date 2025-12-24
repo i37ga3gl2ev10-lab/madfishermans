@@ -1,0 +1,176 @@
+{
+  "base": {
+    "city": "Naha",
+    "lat": 26.2124,
+    "lng": 127.6809
+  },
+  "days": [
+    {
+      "day": 1,
+      "title": "나하 도심 클러스터",
+      "theme": ["도심", "문화", "시장", "쇼핑"],
+      "spots": [
+        {
+          "id": "naha-airport",
+          "name": "나하 공항",
+          "lat": 26.2064,
+          "lng": 127.6469,
+          "type": "arrival",
+          "note": "도착 / 렌트카 픽업"
+        },
+        {
+          "id": "shurijo",
+          "name": "슈리성",
+          "lat": 26.2170,
+          "lng": 127.7190,
+          "type": "culture",
+          "note": "오키나와 류큐 왕국 상징"
+        },
+        {
+          "id": "naminoue",
+          "name": "나미노우에 신사",
+          "lat": 26.2234,
+          "lng": 127.6792,
+          "type": "culture",
+          "note": "바다 위 신사"
+        },
+        {
+          "id": "makishi-market",
+          "name": "마키시 공설시장",
+          "lat": 26.2173,
+          "lng": 127.6920,
+          "type": "food",
+          "note": "현지 음식"
+        },
+        {
+          "id": "kokusai",
+          "name": "국제거리",
+          "lat": 26.2176,
+          "lng": 127.6925,
+          "type": "shopping",
+          "note": "저녁 산책"
+        }
+      ]
+    },
+
+    {
+      "day": 2,
+      "title": "북부 바다 드라이브",
+      "theme": ["해변", "드라이브", "자연"],
+      "spots": [
+        {
+          "id": "manzamo",
+          "name": "만좌모",
+          "lat": 26.5054,
+          "lng": 127.8514,
+          "type": "view",
+          "note": "코끼리 바위"
+        },
+        {
+          "id": "bise",
+          "name": "비세 후쿠기 가로수길",
+          "lat": 26.6983,
+          "lng": 127.8777,
+          "type": "walk",
+          "note": "산책"
+        },
+        {
+          "id": "churaumi",
+          "name": "추라우미 수족관",
+          "lat": 26.6949,
+          "lng": 127.8784,
+          "type": "nature",
+          "note": "고래상어"
+        },
+        {
+          "id": "kouri-bridge",
+          "name": "고우리 대교",
+          "lat": 26.6892,
+          "lng": 128.0123,
+          "type": "drive",
+          "note": "바다 위 드라이브"
+        }
+      ]
+    },
+
+    {
+      "day": 3,
+      "title": "중부 바다 & 미국 감성",
+      "theme": ["카페", "해변", "선셋"],
+      "spots": [
+        {
+          "id": "araha",
+          "name": "아라하 비치",
+          "lat": 26.3167,
+          "lng": 127.7417,
+          "type": "beach",
+          "note": "여유"
+        },
+        {
+          "id": "american-village",
+          "name": "아메리칸 빌리지",
+          "lat": 26.3163,
+          "lng": 127.7563,
+          "type": "shopping",
+          "note": "미국 분위기"
+        },
+        {
+          "id": "zanpa",
+          "name": "잔파곶",
+          "lat": 26.4391,
+          "lng": 127.7070,
+          "type": "view",
+          "note": "절벽"
+        },
+        {
+          "id": "sunset",
+          "name": "선셋 비치",
+          "lat": 26.3169,
+          "lng": 127.7579,
+          "type": "sunset",
+          "note": "해질녘"
+        }
+      ]
+    },
+
+    {
+      "day": 4,
+      "title": "남부 문화 & 귀국",
+      "theme": ["문화", "자연", "귀국"],
+      "spots": [
+        {
+          "id": "sefa",
+          "name": "세파우타키",
+          "lat": 26.1136,
+          "lng": 127.7394,
+          "type": "culture",
+          "note": "성지"
+        },
+        {
+          "id": "gyokusendo",
+          "name": "교쿠센도 동굴 (오키나와 월드)",
+          "lat": 26.1176,
+          "lng": 127.7379,
+          "type": "nature",
+          "note": "동굴"
+        },
+        {
+          "id": "nirai-kanai",
+          "name": "니라이카나이 대교",
+          "lat": 26.1156,
+          "lng": 127.7454,
+          "type": "drive",
+          "note": "전망"
+        },
+        {
+          "id": "naha-airport-out",
+          "name": "나하 공항",
+          "lat": 26.2064,
+          "lng": 127.6469,
+          "type": "departure",
+          "note": "귀국"
+        }
+      ]
+    }
+  ]
+}
