@@ -1,114 +1,1242 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>⛳ Golf Log · 라운딩 노트</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>⛳ Golf Log · 라운드 노트</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<style>
-:root{
-  --ink:#eaf2f6; --muted:rgba(234,242,246,.7);
-  --line:rgba(255,255,255,.18);
-  --glass:rgba(20,30,36,.42);
-  --accent:#2fd3c6;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;
-  color:var(--ink);
-  background:linear-gradient(180deg,#0b1217,#0a0f14);
-}
-header{
-  padding:12px 16px;
-  border-bottom:1px solid var(--line);
-  background:rgba(8,12,16,.6);
-}
-.wrap{
-  display:grid;
-  grid-template-columns:1.25fr .75fr;
-  height:calc(100dvh - 56px);
-}
-#map{min-height:0}
-aside{
-    </div>
+  <style>
+    :root{
+      --ink:#eaf2f6;
+      --muted:rgba(234,242,246,.72);
+      --line:rgba(255,255,255,.18);
+      --glass:rgba(20,30,36,.42);
+      --glass2:rgba(20,30,36,.28);
+      --accent:#2fd3c6;
+      --accent2:#7bd0ff;
+      --danger:#ff6b6b;
+      --warn:#ffd43b;
+      --shadow: 0 18px 44px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Noto Sans KR",sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 480px at 20% 0%, rgba(47,211,198,.20), transparent 55%),
+        radial-gradient(900px 420px at 90% 10%, rgba(123,208,255,.18), transparent 55%),
+        linear-gradient(180deg, #0b1217 0%, #0a0f14 100%);
+    }
+    header{
+      position: sticky; top:0; z-index:50;
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+      background: rgba(8,12,16,.55);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      display:flex; justify-content:space-between; gap:12px; align-items:center;
+    }
+    .title{ font-weight:900; letter-spacing:-.2px; }
+    .sub{ color:var(--muted); font-size:12px; margin-top:2px; }
 
-    <div class="card">
-      <b>라운딩 기록 추가</b><br><br>
-      <input id="date" type="date"><br><br>
-      <input id="time" placeholder="티오프 시간 (예: 07:30)"><br><br>
-      <input id="players" placeholder="플레이어 (예: 나,김프로)"><br><br>
-      <input id="scores" placeholder="스코어 (예: 82,88)"><br><br>
-      <textarea id="memo" placeholder="메모"></textarea><br><br>
-      <button class="btn" onclick="addRound()">추가</button>
-    </div>
+    .wrap{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      height: calc(100dvh - 58px);
+      min-height:0;
+    }
 
-    <div class="card">
-      <b id="courseTitle">골프장을 선택하세요</b>
-      <div id="roundList" style="font-size:13px;margin-top:8px"></div>
-    </div>
-  </aside>
+    #map{
+      width:100%;
+      height:100%;
+      position:relative;
+      overflow:hidden;
+      min-height:0;
+    }
+    .fog{
+      pointer-events:none;
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 420px at 30% 20%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(900px 520px at 70% 30%, rgba(255,255,255,.08), transparent 65%),
+        linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.22));
+      mix-blend-mode: screen;
+      opacity:.45;
+      z-index: 400;
+    }
+    .map-vignette{
+      pointer-events:none;
+      position:absolute; inset:0;
+      background:
+        radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0,0,0,.45) 100%);
+      opacity:.55;
+      z-index: 401;
+    }
+
+    aside{
+      border-left:1px solid var(--line);
+      padding:14px;
+      overflow-y:auto;
+      min-height:0;
+      background: linear-gradient(180deg, rgba(8,12,16,.35), rgba(8,12,16,.65));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--glass);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      box-shadow: var(--shadow);
+      padding:12px;
+      margin:10px 0;
+    }
+    .card.soft{
+      background: var(--glass2);
+      box-shadow: 0 12px 32px rgba(0,0,0,.22);
+    }
+
+    .muted{ color:var(--muted); font-size:13px; }
+    .small{ color:var(--muted); font-size:12px; }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .sep{ height:1px; background: var(--line); border:0; margin:10px 0; }
+
+    .btn{
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight:900;
+      transition: .12s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{
+      border-color: rgba(47,211,198,.35);
+      background: rgba(47,211,198,.14);
+    }
+    .btn.danger{
+      border-color: rgba(255,107,107,.35);
+      background: rgba(255,107,107,.12);
+    }
+    .btn.warn{
+      border-color: rgba(255,212,59,.35);
+      background: rgba(255,212,59,.12);
+    }
+    .btn.tiny{ padding:8px 10px; border-radius:12px; }
+    .btn.active{
+      border-color: rgba(47,211,198,.45);
+      background: rgba(47,211,198,.18);
+    }
+
+    input, select, textarea{
+      width:100%;
+      border:1px solid rgba(255,255,255,.20);
+      border-radius: 14px;
+      padding:10px;
+      font:inherit;
+      color: var(--ink);
+      background: rgba(0,0,0,.18);
+    }
+    textarea{ min-height: 64px; resize: vertical; }
+    input:focus, select:focus, textarea:focus{
+      outline:none;
+      border-color: rgba(47,211,198,.55);
+      box-shadow: 0 0 0 4px rgba(47,211,198,.16);
+    }
+
+    .tag{
+      display:inline-flex; align-items:center;
+      padding:4px 10px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:999px;
+      font-size:12px;
+      color:rgba(234,242,246,.85);
+      background: rgba(255,255,255,.06);
+    }
+
+    .fav{
+      cursor:pointer; user-select:none;
+      font-size:18px; line-height:1;
+      padding:2px 6px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+    }
+    .fav.on{
+      border-color: rgba(47,211,198,.45);
+      background: rgba(47,211,198,.16);
+    }
+
+    /* 마커(⛳ + 방문횟수 배지) */
+    .golf-marker{
+      position: relative;
+      width: 30px;
+      height: 30px;
+      font-size: 22px;
+      line-height: 30px;
+      text-align: center;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
+    }
+    .golf-badge{
+      position: absolute;
+      top: -6px;
+      right: -10px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 18px;
+      text-align: center;
+      color: #001414;
+      background: #2fd3c6;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.35),
+                  0 4px 10px rgba(0,0,0,.45);
+    }
+
+    /* 홀 입력 테이블 */
+    .holes-wrap{
+      overflow:auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.04);
+    }
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px; /* 18홀 + 합계 */
+    }
+    th, td{
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      padding:8px;
+      font-size: 12px;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    th{
+      text-align:left;
+      font-weight: 900;
+      color: rgba(234,242,246,.92);
+      position: sticky;
+      top: 0;
+      background: rgba(20,30,36,.85);
+      z-index: 2;
+    }
+    td input{
+      padding:6px 8px;
+      border-radius: 10px;
+    }
+    .me-badge{
+      display:inline-flex;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(47,211,198,.35);
+      background: rgba(47,211,198,.14);
+      font-weight: 900;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    .sticky-tools{
+      position: sticky; top: 0;
+      padding: 8px 0;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(8,12,16,.80), rgba(8,12,16,0));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .item{
+      border:1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .highlight-rain{
+      border-color: rgba(255,212,59,.35) !important;
+      background: rgba(255,212,59,.10) !important;
+    }
+
+    /* Leaflet glass controls */
+    .leaflet-control-zoom a,
+    .leaflet-control-layers{
+      background: rgba(20,30,36,.55) !important;
+      color: var(--ink) !important;
+      border: 1px solid rgba(255,255,255,.18) !important;
+      border-radius: 14px !important;
+      box-shadow: 0 14px 32px rgba(0,0,0,.35) !important;
+      backdrop-filter: blur(12px) saturate(120%);
+      -webkit-backdrop-filter: blur(12px) saturate(120%);
+    }
+    .leaflet-control-layers label{ color: rgba(234,242,246,.95) !important; }
+    .leaflet-control-layers-toggle{ filter: invert(1) brightness(1.2); }
+    .leaflet-tooltip{
+      background: rgba(20,30,36,.72);
+      border:1px solid rgba(255,255,255,.18);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+    }
+
+    /* 모바일 안정화 */
+    html, body { height: 100%; }
+    body { overflow: hidden; }
+
+    @media (max-width: 980px){
+      .sticky-tools{ position: static; }
+      .wrap{ grid-template-columns:1fr; height: calc(100dvh - 58px); }
+      #map{ height: 56dvh; }
+      aside{ height: calc(44dvh - env(safe-area-inset-bottom)); border-left:none; border-top:1px solid var(--line); }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div>
+    <div class="title">🌫️ 골프장 지도 · 라운드 노트</div>
+    <div class="sub">⛳ 마커 숫자 = 방문횟수 · 라운드 상세(18홀/동반자/메모) · 통계</div>
+  </div>
+  <div class="row">
+    <button class="btn danger" id="btnResetAll">전체 초기화</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="map">
+    <div class="fog"></div>
+    <div class="map-vignette"></div>
+  </div>
+  <aside id="panel"></aside>
 </div>
 
 <script>
-const LS="golf_log_v1";
-let data=JSON.parse(localStorage.getItem(LS)||"{}");
-let currentCourse=null;
+  /**********************
+   * Storage keys
+   **********************/
+  const LS_COURSES = "golf_courses_v2"; // [{id,name,region,lat,lng,homepage,favorite,tags[]}]
+  const LS_ROUNDS  = "golf_rounds_v2";  // { courseId: [ {id,date,teeTime,players:[{name,holes[18]}],comment} ] }
+  const LS_CHECK   = "golf_checklist_v2"; // [{id,label,done,kind}]
+  const LS_PREF    = "golf_prefs_v2";     // { checklistOpen, rainyMode, tagFilter }
 
-const map=L.map("map").setView([36.5,127.8],7);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+  const TAGS = ["가성비","난이도↑","그린빠름","바람","코스재밌음","야간","캐디굿","뷰맛집"];
 
-function createIcon(cnt){
-  return L.divIcon({
-    html:`<div style="font-size:22px">⛳<span style="
-      position:absolute;top:-6px;right:-10px;
-      background:#2fd3c6;color:#001;
-      border-radius:999px;
-      font-size:11px;padding:2px 6px">${cnt}</span></div>`,
-    iconSize:[28,28]
+  function safeParse(s, fallback){ try { return JSON.parse(s); } catch { return fallback; } }
+  function cryptoRandomId(){
+    const a = new Uint32Array(2);
+    crypto.getRandomValues(a);
+    return (a[0].toString(16) + a[1].toString(16));
+  }
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+  function normalizeTags(tags){
+    const set = new Set((tags || []).filter(t => TAGS.includes(t)));
+    return Array.from(set);
+  }
+
+  function loadCourses(){ return safeParse(localStorage.getItem(LS_COURSES) || "[]", []); }
+  function saveCourses(list){ localStorage.setItem(LS_COURSES, JSON.stringify(list)); }
+
+  function loadRounds(){ return safeParse(localStorage.getItem(LS_ROUNDS) || "{}", {}); }
+  function saveRounds(obj){ localStorage.setItem(LS_ROUNDS, JSON.stringify(obj)); }
+
+  function loadPrefs(){
+    const p = safeParse(localStorage.getItem(LS_PREF) || "null", null);
+    return p || { checklistOpen:false, rainyMode:false, tagFilter:"전체", recentN:5 };
+  }
+  function savePrefs(p){ localStorage.setItem(LS_PREF, JSON.stringify(p)); }
+
+  function loadChecklist(){
+    const v = safeParse(localStorage.getItem(LS_CHECK) || "null", null);
+    if (v) return v;
+    const defaults = [
+      { id:"c1", label:"클럽/골프백", done:false, kind:"base" },
+      { id:"c2", label:"골프화 / 장갑(여분)", done:false, kind:"base" },
+      { id:"c3", label:"볼 / 티 / 볼마커", done:false, kind:"base" },
+      { id:"c4", label:"거리측정기 / 충전", done:false, kind:"base" },
+      { id:"c5", label:"우산 / 레인웨어", done:false, kind:"rain" },
+      { id:"c6", label:"타월(여분) / 장갑 여벌", done:false, kind:"rain" },
+      { id:"c7", label:"선크림/모자/선글라스", done:false, kind:"base" },
+      { id:"c8", label:"간식/물/보온", done:false, kind:"base" }
+    ];
+    localStorage.setItem(LS_CHECK, JSON.stringify(defaults));
+    return defaults;
+  }
+  function saveChecklist(list){ localStorage.setItem(LS_CHECK, JSON.stringify(list)); }
+
+  /**********************
+   * Map
+   **********************/
+  const map = L.map("map", { zoomControl:true, tap:false }).setView([36.2, 127.7], 7);
+
+  const normalLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
   });
-}
+  const satelliteLayer = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 18, attribution: "Tiles © Esri" }
+  );
+  satelliteLayer.addTo(map);
+  L.control.layers({ "🛰️ 위성": satelliteLayer, "🗺️ 일반": normalLayer }, null, { position:"topright" }).addTo(map);
 
-// 예시 골프장 하나
-data["레이크힐스"] ||= {lat:36.4,lng:127.6,rounds:[]};
+  const courseMarkers = {}; // courseId -> marker
+  function getVisitCount(courseId){
+    const rounds = loadRounds();
+    return (rounds[courseId] || []).length;
+  }
+  function createCourseIcon(visitCount){
+    const badge = visitCount > 0 ? `<span class="golf-badge">${visitCount}</span>` : "";
+    return L.divIcon({
+      html: `<div class="golf-marker">⛳${badge}</div>`,
+      className: "",
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+  }
+  function updateCourseMarker(course){
+    const m = courseMarkers[course.id];
+    if (!m) return;
+    const cnt = getVisitCount(course.id);
+    m.setIcon(createCourseIcon(cnt));
+    m.unbindTooltip();
+    m.bindTooltip(`${course.name} · 방문 ${cnt}`, { direction:"top", opacity:0.95 });
+  }
+  function rebuildMarkers(){
+    Object.values(courseMarkers).forEach(m => map.removeLayer(m));
+    for (const k of Object.keys(courseMarkers)) delete courseMarkers[k];
 
-Object.entries(data).forEach(([name,c])=>{
-  const m=L.marker([c.lat,c.lng],{icon:createIcon(c.rounds.length)}).addTo(map);
-  m.on("click",()=>selectCourse(name));
-});
+    const courses = loadCourses();
+    courses.forEach(c => {
+      const cnt = getVisitCount(c.id);
+      const marker = L.marker([c.lat, c.lng], { icon: createCourseIcon(cnt) }).addTo(map);
+      marker.bindTooltip(`${c.name} · 방문 ${cnt}`, { direction:"top", opacity:0.95 });
+      marker.on("click", () => selectCourse(c.id, true));
+      courseMarkers[c.id] = marker;
+    });
+  }
 
-function selectCourse(name){
-  currentCourse=name;
-  document.getElementById("courseTitle").innerText=name;
-  renderRounds();
-}
+  /**********************
+   * UI State
+   **********************/
+  const panel = document.getElementById("panel");
+  let currentCourseId = null;
 
-function renderRounds(){
-  const list=data[currentCourse].rounds;
-  document.getElementById("roundList").innerHTML=
-    list.map(r=>`${r.date} ${r.time} · ${r.players.join(",")} · ${r.scores.join("/")}`).join("<br>");
-  localStorage.setItem(LS,JSON.stringify(data));
-}
+  let pickingCourseLocation = false;
+  let pickedLatLng = null;
 
-function addRound(){
-  if(!currentCourse) return alert("골프장을 먼저 선택하세요");
-  data[currentCourse].rounds.push({
-    date:date.value,
-    time:time.value,
-    players:players.value.split(","),
-    scores:scores.value.split(","),
-    memo:memo.value
+  let prefs = loadPrefs();
+
+  // Round form draft
+  let playersDraft = [{ name:"나", holes:Array(18).fill("") }];
+  let editRoundId = null;
+
+  function sortCourses(list){
+    return [...list].sort((a,b)=>{
+      const fa = a.favorite ? 1 : 0;
+      const fb = b.favorite ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return String(a.name||"").localeCompare(String(b.name||""), "ko");
+    });
+  }
+  function applyCourseFilter(list){
+    if (prefs.tagFilter === "전체") return list;
+    return list.filter(c => (c.tags||[]).includes(prefs.tagFilter));
+  }
+
+  function selectCourse(courseId, panTo){
+    currentCourseId = courseId;
+    const c = loadCourses().find(x => x.id === courseId);
+    if (c && panTo) map.setView([c.lat, c.lng], 12, { animate:true });
+    render();
+    if (c && panTo) courseMarkers[c.id]?.openTooltip();
+  }
+
+  function renderTagChecks(prefix, selected){
+    const sel = new Set(selected || []);
+    return TAGS.map(t => {
+      const id = `${prefix}-${t}`;
+      return `<label class="tag"><input type="checkbox" id="${id}" ${sel.has(t)?"checked":""} style="margin-right:6px;">${escapeHtml(t)}</label>`;
+    }).join(" ");
+  }
+
+  /**********************
+   * Stats
+   **********************/
+  function sumHoles(holes){
+    // holes is array length 18, may include "".
+    let sum = 0;
+    let cnt = 0;
+    for (const v of holes){
+      const n = parseInt(v, 10);
+      if (!Number.isNaN(n)) { sum += n; cnt++; }
+    }
+    return { sum, filled: cnt };
+  }
+
+  function getMeTotalFromRound(round){
+    const me = (round.players || []).find(p => (p.name||"").trim() === "나");
+    if (!me) return null;
+    const { sum, filled } = sumHoles(me.holes || []);
+    // if not all holes filled, still allow partial but mark as null for averages unless full 18 filled
+    return (filled === 18) ? sum : null;
+  }
+
+  function computeStatsForCourse(courseId){
+    const roundsObj = loadRounds();
+    const rounds = roundsObj[courseId] || [];
+    const meTotals = rounds
+      .map(r => ({ id:r.id, date:r.date, total:getMeTotalFromRound(r) }))
+      .filter(x => x.total !== null);
+
+    const avg = meTotals.length ? (meTotals.reduce((a,b)=>a+b.total,0) / meTotals.length) : null;
+    return { count: rounds.length, meCount: meTotals.length, meAvg: avg, meTotals };
+  }
+
+  function computeOverallStats(){
+    const roundsObj = loadRounds();
+    const allRounds = Object.values(roundsObj).flat();
+    const meTotals = allRounds
+      .map(r => ({ date:r.date || "", total:getMeTotalFromRound(r), courseId: r.courseId || "" }))
+      .filter(x => x.total !== null)
+      .sort((a,b)=> String(b.date).localeCompare(String(a.date)));
+
+    const avg = meTotals.length ? (meTotals.reduce((a,b)=>a+b.total,0) / meTotals.length) : null;
+    const recent = meTotals.slice(0, prefs.recentN);
+    const recentAvg = recent.length ? (recent.reduce((a,b)=>a+b.total,0) / recent.length) : null;
+    return { meCount: meTotals.length, meAvg: avg, recentN: prefs.recentN, recentAvg };
+  }
+
+  /**********************
+   * Checklist
+   **********************/
+  function renderChecklist(){
+    const items = loadChecklist();
+    const listHtml = items.map(i => {
+      const cls = (prefs.rainyMode && i.kind === "rain") ? "highlight-rain" : "";
+      return `
+        <div class="row ${cls}" style="justify-content:space-between; gap:10px; margin:6px 0; padding:6px 8px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03);">
+          <label style="display:flex; gap:10px; align-items:center; color:rgba(234,242,246,.92);">
+            <input type="checkbox" data-check="${i.id}" ${i.done ? "checked":""}>
+            <span>${escapeHtml(i.label)}</span>
+          </label>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div style="font-weight:900;">✅ 라운딩 전 체크리스트</div>
+          <div class="row">
+            <button class="btn tiny warn ${prefs.rainyMode ? "active":""}" id="btnRain">☔ 비오는날</button>
+            <button class="btn tiny ${prefs.checklistOpen ? "active":""}" id="btnToggleChecklist">
+              ${prefs.checklistOpen ? "닫기" : "열기"}
+            </button>
+          </div>
+        </div>
+        ${prefs.checklistOpen ? `
+          <hr class="sep">
+          ${listHtml}
+          <div class="row" style="margin-top:10px;">
+            <button class="btn tiny" id="btnChecklistReset">체크 해제</button>
+          </div>
+        ` : `<div class="small" style="margin-top:6px;">필요할 때만 펼쳐서 쓰는 작은 패널</div>`}
+      </div>
+    `;
+  }
+
+  /**********************
+   * Courses list / Add course
+   **********************/
+  function renderCoursesList(){
+    const courses = applyCourseFilter(sortCourses(loadCourses()));
+    const overall = computeOverallStats();
+
+    const statsLine = overall.meAvg !== null
+      ? `나 평균 ${overall.meAvg.toFixed(1)}타 · 최근 ${overall.recentN}회 ${overall.recentAvg?.toFixed(1) ?? "-"}타`
+      : `나 스코어(18홀 완성 기록) 없음`;
+
+    const html = courses.map(c => {
+      const cnt = getVisitCount(c.id);
+      const tags = (c.tags||[]).slice(0,4).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(" ");
+      const active = (c.id === currentCourseId) ? "style='border-color: rgba(47,211,198,.45); background: rgba(47,211,198,.10);'" : "";
+      return `
+        <div class="item" ${active}>
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div>
+              <div style="font-weight:900;">${escapeHtml(c.name)}</div>
+              <div class="muted">${escapeHtml(c.region||"")} · 방문 ${cnt}</div>
+              <div class="row" style="margin-top:8px;">${tags || `<span class="tag">태그 없음</span>`}</div>
+            </div>
+            <div class="row">
+              <div class="fav ${c.favorite ? "on":""}" data-fav="${escapeHtml(c.id)}" title="즐겨찾기">${c.favorite ? "⭐":"☆"}</div>
+              <button class="btn tiny" data-open="${escapeHtml(c.id)}">열기</button>
+              <button class="btn tiny danger" data-del-course="${escapeHtml(c.id)}">삭제</button>
+            </div>
+          </div>
+          ${c.homepage ? `<div class="small" style="margin-top:8px;">홈페이지: <a href="${c.homepage}" target="_blank" rel="noopener" style="color:var(--accent2); font-weight:900;">열기</a></div>` : ``}
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card soft">
+        <div class="row" style="justify-content:space-between; align-items:flex-end;">
+          <div>
+            <div style="font-weight:900;">⛳ 골프장</div>
+            <div class="small">${statsLine}</div>
+          </div>
+          <div style="min-width: 190px;">
+            <select id="tagFilter">
+              <option ${prefs.tagFilter==="전체"?"selected":""}>전체</option>
+              ${TAGS.map(t=>`<option ${prefs.tagFilter===t?"selected":""}>${escapeHtml(t)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <hr class="sep">
+        ${html || `<div class="muted">아직 골프장이 없습니다. 아래에서 추가하세요.</div>`}
+      </div>
+    `;
+  }
+
+  function renderAddCourse(){
+    return `
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-weight:900;">➕ 골프장 추가</div>
+            <div class="small">“위치 찍기” → 지도 탭 → 정보 입력 → 추가</div>
+          </div>
+          <button class="btn tiny primary ${pickingCourseLocation ? "active":""}" id="btnPickCourse">
+            ${pickingCourseLocation ? "위치 찍는 중…" : "위치 찍기"}
+          </button>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+          <div style="flex:1; min-width:160px;">
+            <input id="addCourseName" placeholder="골프장 이름" />
+          </div>
+          <div style="flex:1; min-width:160px;">
+            <input id="addCourseRegion" placeholder="지역(예: 충남 태안)" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <div style="flex:1; min-width:220px;">
+            <input id="addCourseHome" placeholder="골프장 홈페이지(선택)" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <span class="small">태그:</span>
+          <div class="row" style="gap:6px;">${renderTagChecks("addCourseTag", [])}</div>
+        </div>
+
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+          <button class="btn primary" id="btnAddCourse">추가</button>
+          <div class="small" id="pickedCourseInfo">
+            ${pickedLatLng ? `📍 선택됨: ${pickedLatLng.lat.toFixed(5)}, ${pickedLatLng.lng.toFixed(5)}` : "📍 아직 위치가 선택되지 않았습니다."}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**********************
+   * Round detail
+   **********************/
+  function renderPlayersTable(){
+    const headerHoles = Array.from({length:18}, (_,i)=>`<th>H${i+1}</th>`).join("");
+    const rows = playersDraft.map((p, pi) => {
+      const holes = (p.holes || Array(18).fill(""));
+      const { sum, filled } = sumHoles(holes);
+      const out = sumHoles(holes.slice(0,9));
+      const inn = sumHoles(holes.slice(9,18));
+      const isMe = (p.name || "").trim() === "나";
+      return `
+        <tr>
+          <td>
+            <input data-pname="${pi}" value="${escapeHtml(p.name||"")}" placeholder="이름">
+            ${isMe ? `<span class="me-badge">ME</span>` : ``}
+          </td>
+          ${holes.map((v, hi)=>`
+            <td><input data-hole="${pi}:${hi}" value="${escapeHtml(v)}" placeholder="-" inputmode="numeric"></td>
+          `).join("")}
+          <td><b>${out.sum || 0}</b></td>
+          <td><b>${inn.sum || 0}</b></td>
+          <td><b>${filled===18 ? sum : (filled? sum+"*" : "-")}</b></td>
+          <td><button class="btn tiny danger" data-pdel="${pi}">삭제</button></td>
+        </tr>
+      `;
+    }).join("");
+
+    return `
+      <div class="holes-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:150px;">플레이어</th>
+              ${headerHoles}
+              <th>OUT</th>
+              <th>IN</th>
+              <th>TOT</th>
+              <th>삭제</th>
+            </tr>
+          </thead>
+          <tbody id="playersBody">
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:6px;">
+        ※ TOT 옆에 * 표시는 18홀 미완성(부분 입력)입니다. 평균 계산에는 18홀 완성 기록만 반영.
+      </div>
+    `;
+  }
+
+  function computeCourseStatsLine(courseId){
+    const st = computeStatsForCourse(courseId);
+    if (st.meAvg === null) return "나 18홀 완성 기록 없음";
+    return `나 평균 ${st.meAvg.toFixed(1)}타 (완성 ${st.meCount}회 / 총 방문 ${st.count}회)`;
+  }
+
+  function renderCourseDetail(){
+    if (!currentCourseId){
+      return `
+        <div class="card">
+          <div class="muted">지도에서 골프장(⛳)을 누르거나 목록에서 “열기”를 누르세요.</div>
+        </div>
+      `;
+    }
+
+    const course = loadCourses().find(x => x.id === currentCourseId);
+    if (!course) return "";
+
+    const roundsObj = loadRounds();
+    const rounds = (roundsObj[currentCourseId] || []);
+    const visitCount = rounds.length;
+
+    // list
+    const roundsHtml = rounds.map(r => {
+      const meTotal = getMeTotalFromRound(r);
+      const meTxt = (meTotal !== null) ? ` · 나 ${meTotal}타` : "";
+      const pnames = (r.players||[]).map(p=>p.name).filter(Boolean).slice(0,4).join(", ");
+      return `
+        <div class="item">
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div>
+              <div style="font-weight:900;">📅 ${escapeHtml(r.date||"")} · ⏱ ${escapeHtml(r.teeTime||"")}${meTxt}</div>
+              <div class="small">${escapeHtml(pnames || "플레이어 없음")}</div>
+              ${r.comment ? `<div class="muted" style="margin-top:8px;">${escapeHtml(r.comment)}</div>` : ``}
+            </div>
+            <div class="row">
+              <button class="btn tiny" data-edit-round="${escapeHtml(r.id)}">상세/수정</button>
+              <button class="btn tiny danger" data-del-round="${escapeHtml(r.id)}">삭제</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card soft">
+        <div class="row" style="justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-weight:900; font-size:16px;">${escapeHtml(course.name)}</div>
+            <div class="muted">${escapeHtml(course.region||"")} · 방문 ${visitCount}</div>
+            <div class="small" style="margin-top:6px;">${computeCourseStatsLine(currentCourseId)}</div>
+            ${course.homepage ? `<div class="small" style="margin-top:6px;">홈페이지: <a href="${course.homepage}" target="_blank" rel="noopener" style="color:var(--accent2); font-weight:900;">열기</a></div>` : ``}
+          </div>
+          <div class="row">
+            <button class="btn tiny" id="btnPanToCourse">지도</button>
+          </div>
+        </div>
+
+        <hr class="sep">
+
+        <div style="font-weight:900;">➕ 라운드 기록 ${editRoundId ? "(수정 모드)" : ""}</div>
+
+        <div class="row" style="margin-top:8px;">
+          <div style="flex:1; min-width:160px;">
+            <input id="roundDate" type="date" />
+          </div>
+          <div style="flex:1; min-width:160px;">
+            <input id="roundTime" type="time" />
+          </div>
+          <div class="row" style="gap:8px;">
+            <button class="btn tiny" id="btnAddPlayer">+ 동반자</button>
+            <button class="btn tiny" id="btnResetPlayers">플레이어 초기화</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          ${renderPlayersTable()}
+        </div>
+
+        <div style="margin-top:10px;">
+          <textarea id="roundComment" placeholder="코멘트(예: 그린 빠름 / 바람 / 퍼팅 / 캐디 / 코스 난이도)"></textarea>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="btnSaveRound">저장</button>
+          <button class="btn" id="btnClearRoundForm">초기화</button>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row" style="justify-content:space-between; align-items:flex-end;">
+          <div>
+            <div style="font-weight:900;">📚 라운드 기록</div>
+            <div class="small">총 ${visitCount}회</div>
+          </div>
+        </div>
+
+        <div style="display:grid; gap:10px; margin-top:10px;">
+          ${roundsHtml || `<div class="muted">아직 라운드 기록이 없습니다.</div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  /**********************
+   * Render
+   **********************/
+  function render(){
+    panel.innerHTML =
+      `<div class="sticky-tools">
+        ${renderChecklist()}
+      </div>
+      ${renderCoursesList()}
+      ${renderAddCourse()}
+      ${renderCourseDetail()}
+      <div class="card">
+        <div class="small">저장: 이 브라우저(localStorage). GitHub Pages + 홈화면 바로가기로 앱처럼 사용 가능.</div>
+      </div>`;
+
+    bindChecklist();
+    bindCourseList();
+    bindAddCourse();
+    bindCourseDetail();
+  }
+
+  /**********************
+   * Bindings
+   **********************/
+  function bindChecklist(){
+    const btn = document.getElementById("btnToggleChecklist");
+    if (btn){
+      btn.onclick = () => {
+        prefs.checklistOpen = !prefs.checklistOpen;
+        savePrefs(prefs);
+        render();
+      };
+    }
+    const btnRain = document.getElementById("btnRain");
+    if (btnRain){
+      btnRain.onclick = () => {
+        prefs.rainyMode = !prefs.rainyMode;
+        savePrefs(prefs);
+        render();
+      };
+    }
+
+    if (prefs.checklistOpen){
+      panel.querySelectorAll("input[data-check]").forEach(chk=>{
+        chk.onchange = () => {
+          const id = chk.getAttribute("data-check");
+          const list = loadChecklist();
+          const idx = list.findIndex(x=>x.id===id);
+          if (idx >= 0){
+            list[idx].done = chk.checked;
+            saveChecklist(list);
+          }
+        };
+      });
+
+      const resetBtn = document.getElementById("btnChecklistReset");
+      if (resetBtn){
+        resetBtn.onclick = () => {
+          const list = loadChecklist().map(x=>({ ...x, done:false }));
+          saveChecklist(list);
+          render();
+        };
+      }
+    }
+  }
+
+  function bindCourseList(){
+    const sel = document.getElementById("tagFilter");
+    if (sel){
+      sel.onchange = () => {
+        prefs.tagFilter = sel.value;
+        savePrefs(prefs);
+        render();
+      };
+    }
+
+    panel.querySelectorAll("[data-open]").forEach(b=>{
+      b.onclick = () => selectCourse(b.getAttribute("data-open"), true);
+    });
+
+    panel.querySelectorAll("[data-fav]").forEach(el=>{
+      el.onclick = () => {
+        const id = el.getAttribute("data-fav");
+        const courses = loadCourses();
+        const idx = courses.findIndex(x=>x.id===id);
+        if (idx < 0) return;
+        courses[idx].favorite = !courses[idx].favorite;
+        saveCourses(courses);
+        render();
+      };
+    });
+
+    panel.querySelectorAll("[data-del-course]").forEach(b=>{
+      b.onclick = () => {
+        const id = b.getAttribute("data-del-course");
+        if (!confirm("이 골프장을 삭제할까요? (라운드 기록도 함께 삭제)")) return;
+
+        const courses = loadCourses().filter(x=>x.id!==id);
+        saveCourses(courses);
+
+        const rounds = loadRounds();
+        delete rounds[id];
+        saveRounds(rounds);
+
+        currentCourseId = (currentCourseId === id) ? null : currentCourseId;
+
+        render();
+        rebuildMarkers();
+      };
+    });
+
+    // markers should reflect course filter? keep markers always show all courses (practical)
+    // if you want filter to also hide markers later, we can add it.
+  }
+
+  function bindAddCourse(){
+    const btnPick = document.getElementById("btnPickCourse");
+    if (btnPick){
+      btnPick.onclick = () => {
+        pickingCourseLocation = !pickingCourseLocation;
+        pickedLatLng = null;
+        render();
+      };
+    }
+
+    const btnAdd = document.getElementById("btnAddCourse");
+    if (btnAdd){
+      btnAdd.onclick = () => {
+        const name = (document.getElementById("addCourseName").value || "").trim();
+        const region = (document.getElementById("addCourseRegion").value || "").trim();
+        const homepage = (document.getElementById("addCourseHome").value || "").trim();
+
+        if (!name) return alert("골프장 이름을 입력하세요.");
+        if (!pickedLatLng) return alert("‘위치 찍기’ 후 지도에서 골프장 위치를 탭하세요.");
+
+        const tags = [];
+        TAGS.forEach(t=>{
+          const el = document.getElementById(`addCourseTag-${t}`);
+          if (el && el.checked) tags.push(t);
+        });
+
+        const courses = loadCourses();
+        const c = {
+          id: "g-" + cryptoRandomId(),
+          name, region,
+          lat: pickedLatLng.lat,
+          lng: pickedLatLng.lng,
+          homepage,
+          favorite: false,
+          tags: normalizeTags(tags)
+        };
+        courses.unshift(c);
+        saveCourses(courses);
+
+        pickingCourseLocation = false;
+        pickedLatLng = null;
+
+        render();
+        rebuildMarkers();
+      };
+    }
+  }
+
+  function renderPlayersDraftBindings(){
+    const body = document.getElementById("playersBody");
+    if (!body) return;
+
+    body.querySelectorAll("input[data-pname]").forEach(inp=>{
+      inp.oninput = () => { playersDraft[+inp.dataset.pname].name = inp.value; };
+    });
+    body.querySelectorAll("input[data-hole]").forEach(inp=>{
+      inp.oninput = () => {
+        const [pi, hi] = inp.dataset.hole.split(":").map(n=>parseInt(n,10));
+        playersDraft[pi].holes[hi] = inp.value;
+        // totals update requires rerender table; keep light by not rerender every keystroke
+        // but totals depend on values; simplest: do nothing (totals show after save)
+        // however users expect instant totals. We'll do a small re-render debounce:
+        schedulePlayersTableRefresh();
+      };
+    });
+    body.querySelectorAll("button[data-pdel]").forEach(btn=>{
+      btn.onclick = () => {
+        const idx = +btn.dataset.pdel;
+        playersDraft.splice(idx, 1);
+        if (playersDraft.length === 0) playersDraft = [{ name:"나", holes:Array(18).fill("") }];
+        refreshPlayersTableNow();
+      };
+    });
+  }
+
+  let playersRefreshTimer = null;
+  function schedulePlayersTableRefresh(){
+    clearTimeout(playersRefreshTimer);
+    playersRefreshTimer = setTimeout(refreshPlayersTableNow, 220);
+  }
+  function refreshPlayersTableNow(){
+    const container = document.getElementById("playersTableContainer");
+    if (!container) return;
+    container.innerHTML = renderPlayersTable();
+    renderPlayersDraftBindings();
+  }
+
+  function resetPlayersDraft(){
+    playersDraft = [{ name:"나", holes:Array(18).fill("") }];
+    editRoundId = null;
+  }
+
+  function resetRoundFormUI(){
+    editRoundId = null;
+    const d = document.getElementById("roundDate");
+    const t = document.getElementById("roundTime");
+    const c = document.getElementById("roundComment");
+    if (d) d.value = "";
+    if (t) t.value = "";
+    if (c) c.value = "";
+    resetPlayersDraft();
+    refreshPlayersTableNow();
+  }
+
+  function bindCourseDetail(){
+    if (!currentCourseId) return;
+
+    const course = loadCourses().find(x=>x.id===currentCourseId);
+    if (!course) return;
+
+    const btnPan = document.getElementById("btnPanToCourse");
+    if (btnPan){
+      btnPan.onclick = () => map.setView([course.lat, course.lng], 12, { animate:true });
+    }
+
+    // We rendered table inline; to allow dynamic refresh without rerender whole panel,
+    // wrap table in a container and refresh.
+    // But renderCourseDetail currently injects renderPlayersTable() directly.
+    // We'll patch by replacing it post-render here:
+    const detailCard = panel.querySelector(".card.soft");
+    if (detailCard){
+      // find the first holes-wrap parent by injecting container if absent
+      // We'll just insert a container around existing table by re-rendering in place:
+      const holesExisting = detailCard.querySelector(".holes-wrap")?.parentElement;
+      if (holesExisting){
+        // already there; nothing.
+      }
+    }
+
+    // Replace table area with container for refresh (safe)
+    // Find the first occurrence of holes-wrap and wrap it is complex. We'll do simple:
+    // If container doesn't exist, create it right after the row inputs (we locate by id roundComment).
+    const commentEl = document.getElementById("roundComment");
+    if (commentEl){
+      // Insert container BEFORE comment textarea if not present
+      if (!document.getElementById("playersTableContainer")){
+        const holder = document.createElement("div");
+        holder.id = "playersTableContainer";
+        holder.style.marginTop = "10px";
+        // Place it above the comment textarea
+        commentEl.parentElement.parentElement.insertBefore(holder, commentEl.parentElement);
+      }
+      refreshPlayersTableNow();
+    }
+
+    const addPlayer = document.getElementById("btnAddPlayer");
+    if (addPlayer){
+      addPlayer.onclick = () => {
+        playersDraft.push({ name:"", holes:Array(18).fill("") });
+        refreshPlayersTableNow();
+      };
+    }
+
+    const resetPlayers = document.getElementById("btnResetPlayers");
+    if (resetPlayers){
+      resetPlayers.onclick = () => {
+        resetPlayersDraft();
+        refreshPlayersTableNow();
+      };
+    }
+
+    const saveBtn = document.getElementById("btnSaveRound");
+    if (saveBtn){
+      saveBtn.onclick = () => {
+        const date = (document.getElementById("roundDate").value || "").trim();
+        const teeTime = (document.getElementById("roundTime").value || "").trim();
+        const comment = (document.getElementById("roundComment").value || "").trim();
+
+        if (!date) return alert("라운딩 날짜를 입력하세요.");
+        if (!teeTime) return alert("티오프 시간을 입력하세요.");
+
+        // Clean players: keep if name exists or any hole filled
+        const cleaned = playersDraft
+          .map(p => ({
+            name: (p.name||"").trim(),
+            holes: (p.holes||Array(18).fill("")).map(v => (v ?? "").toString().trim())
+          }))
+          .filter(p => p.name.length>0 || p.holes.some(v => v !== ""));
+
+        if (!cleaned.length) return alert("플레이어를 최소 1명 입력하세요.");
+
+        // ensure "나" exists (if user removed)
+        if (!cleaned.some(p => p.name === "나")){
+          cleaned.unshift({ name:"나", holes:Array(18).fill("") });
+        }
+
+        const rounds = loadRounds();
+        const list = rounds[currentCourseId] || [];
+
+        const payload = {
+          id: editRoundId || ("r-" + cryptoRandomId()),
+          date, teeTime,
+          players: cleaned,
+          comment,
+          // store courseId for overall stats convenience
+          courseId: currentCourseId
+        };
+
+        if (editRoundId){
+          const idx = list.findIndex(r=>r.id===editRoundId);
+          if (idx >= 0) list[idx] = payload;
+          else list.unshift(payload);
+        }else{
+          list.unshift(payload);
+        }
+
+        rounds[currentCourseId] = list;
+        saveRounds(rounds);
+
+        updateCourseMarker(course);
+        editRoundId = null;
+
+        render();
+        // after render, reset form
+        setTimeout(resetRoundFormUI, 0);
+      };
+    }
+
+    const clearBtn = document.getElementById("btnClearRoundForm");
+    if (clearBtn) clearBtn.onclick = () => resetRoundFormUI();
+
+    // list actions
+    panel.querySelectorAll("[data-del-round]").forEach(btn=>{
+      btn.onclick = () => {
+        const rid = btn.getAttribute("data-del-round");
+        if (!confirm("이 라운드 기록을 삭제할까요?")) return;
+
+        const rounds = loadRounds();
+        const list = rounds[currentCourseId] || [];
+        rounds[currentCourseId] = list.filter(r=>r.id!==rid);
+        saveRounds(rounds);
+
+        updateCourseMarker(course);
+        render();
+      };
+    });
+
+    panel.querySelectorAll("[data-edit-round]").forEach(btn=>{
+      btn.onclick = () => {
+        const rid = btn.getAttribute("data-edit-round");
+        const rounds = loadRounds();
+        const list = rounds[currentCourseId] || [];
+        const r = list.find(x=>x.id===rid);
+        if (!r) return;
+
+        editRoundId = rid;
+        document.getElementById("roundDate").value = r.date || "";
+        document.getElementById("roundTime").value = r.teeTime || "";
+        document.getElementById("roundComment").value = r.comment || "";
+
+        playersDraft = (r.players && r.players.length)
+          ? r.players.map(p => ({ name:p.name||"", holes:(p.holes||Array(18).fill("")).slice(0,18).concat(Array(18).fill("")).slice(0,18) }))
+          : [{ name:"나", holes:Array(18).fill("") }];
+
+        // refresh table
+        refreshPlayersTableNow();
+
+        // scroll to top for edit convenience
+        panel.scrollTo({ top: 0, behavior: "smooth" });
+      };
+    });
+  }
+
+  /**********************
+   * Map click (pick location)
+   **********************/
+  map.on("click", (e)=>{
+    if (!pickingCourseLocation) return;
+    pickedLatLng = e.latlng;
+    render();
   });
-  renderRounds();
-}
 
-function toggleChecklist(){
-  const el=document.getElementById("checklist");
-  el.style.display=el.style.display==="block"?"none":"block";
-}
+  /**********************
+   * Init
+   **********************/
+  function init(){
+    // migrate older keys if needed? (skip for simplicity)
+    rebuildMarkers();
+    render();
+  }
+
+  document.getElementById("btnResetAll").onclick = () => {
+    if (!confirm("정말 전체 초기화할까요? (골프장/라운드/체크리스트/설정 모두 삭제)")) return;
+    localStorage.removeItem(LS_COURSES);
+    localStorage.removeItem(LS_ROUNDS);
+    localStorage.removeItem(LS_CHECK);
+    localStorage.removeItem(LS_PREF);
+
+    // reset in-memory
+    prefs = { checklistOpen:false, rainyMode:false, tagFilter:"전체", recentN:5 };
+    currentCourseId = null;
+    pickingCourseLocation = false;
+    pickedLatLng = null;
+    playersDraft = [{ name:"나", holes:Array(18).fill("") }];
+    editRoundId = null;
+
+    init();
+  };
+
+  init();
 </script>
 </body>
 </html>
