@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⛳ Golf Log · 라운딩 노트</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{
+  --ink:#eaf2f6; --muted:rgba(234,242,246,.7);
+  --line:rgba(255,255,255,.18);
+  --glass:rgba(20,30,36,.42);
+  --accent:#2fd3c6;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,#0b1217,#0a0f14);
+}
+header{
+  padding:12px 16px;
+  border-bottom:1px solid var(--line);
+  background:rgba(8,12,16,.6);
+}
+.wrap{
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  height:calc(100dvh - 56px);
+}
+#map{min-height:0}
+aside{
+  min-height:0;
+  overflow-y:auto;
+  padding:14px;
+  border-left:1px solid var(--line);
+  background:rgba(8,12,16,.6);
+  -webkit-overflow-scrolling:touch;
+}
+.card{
+  background:var(--glass);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:12px;
+}
+.btn{
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.06);
+  color:var(--ink);
+  font-weight:700;
+}
+input,textarea{
+  width:100%;
+  border-radius:12px;
+  border:1px solid var(--line);
+  padding:8px;
+  background:rgba(0,0,0,.2);
+  color:var(--ink);
+}
+textarea{min-height:50px}
+.toggle{cursor:pointer;color:var(--accent);font-size:13px}
+.checklist{display:none;font-size:13px}
+</style>
+</head>
+
+<body>
+<header>
+  <b>⛳ Golf Log</b>
+  <div style="font-size:12px;color:var(--muted)">골프장 · 라운딩 기록</div>
+</header>
+
+<div class="wrap">
+  <div id="map"></div>
+
+  <aside id="panel">
+    <div class="card">
+      <div class="toggle" onclick="toggleChecklist()">▶ 라운딩 전 준비물</div>
+      <div class="checklist" id="checklist">
+        <label><input type="checkbox"> 골프백</label><br>
+        <label><input type="checkbox"> 장갑</label><br>
+        <label><input type="checkbox"> 볼</label><br>
+        <label><input type="checkbox"> 거리측정기</label><br>
+        <label><input type="checkbox"> 레인웨어</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>라운딩 기록 추가</b><br><br>
+      <input id="date" type="date"><br><br>
+      <input id="time" placeholder="티오프 시간 (예: 07:30)"><br><br>
+      <input id="players" placeholder="플레이어 (예: 나,김프로)"><br><br>
+      <input id="scores" placeholder="스코어 (예: 82,88)"><br><br>
+      <textarea id="memo" placeholder="메모"></textarea><br><br>
+      <button class="btn" onclick="addRound()">추가</button>
+    </div>
+
+    <div class="card">
+      <b id="courseTitle">골프장을 선택하세요</b>
+      <div id="roundList" style="font-size:13px;margin-top:8px"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const LS="golf_log_v1";
+let data=JSON.parse(localStorage.getItem(LS)||"{}");
+let currentCourse=null;
+
+const map=L.map("map").setView([36.5,127.8],7);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+function createIcon(cnt){
+  return L.divIcon({
+    html:`<div style="font-size:22px">⛳<span style="
+      position:absolute;top:-6px;right:-10px;
+      background:#2fd3c6;color:#001;
+      border-radius:999px;
+      font-size:11px;padding:2px 6px">${cnt}</span></div>`,
+    iconSize:[28,28]
+  });
+}
+
+// 예시 골프장 하나
+data["레이크힐스"] ||= {lat:36.4,lng:127.6,rounds:[]};
+
+Object.entries(data).forEach(([name,c])=>{
+  const m=L.marker([c.lat,c.lng],{icon:createIcon(c.rounds.length)}).addTo(map);
+  m.on("click",()=>selectCourse(name));
+});
+
+function selectCourse(name){
+  currentCourse=name;
+  document.getElementById("courseTitle").innerText=name;
+  renderRounds();
+}
+
+function renderRounds(){
+  const list=data[currentCourse].rounds;
+  document.getElementById("roundList").innerHTML=
+    list.map(r=>`${r.date} ${r.time} · ${r.players.join(",")} · ${r.scores.join("/")}`).join("<br>");
+  localStorage.setItem(LS,JSON.stringify(data));
+}
+
+function addRound(){
+  if(!currentCourse) return alert("골프장을 먼저 선택하세요");
+  data[currentCourse].rounds.push({
+    date:date.value,
+    time:time.value,
+    players:players.value.split(","),
+    scores:scores.value.split(","),
+    memo:memo.value
+  });
+  renderRounds();
+}
+
+function toggleChecklist(){
+  const el=document.getElementById("checklist");
+  el.style.display=el.style.display==="block"?"none":"block";
+}
+</script>
+</body>
+</html>
