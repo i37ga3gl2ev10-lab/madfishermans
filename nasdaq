@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📊 리스크 레짐 대시보드 (공격/중립/방어)</title>
+  <style>
+    :root{
+      --ink:#eaf2f6;
+      --muted:rgba(234,242,246,.72);
+      --line:rgba(255,255,255,.16);
+      --glass:rgba(20,30,36,.42);
+      --glass2:rgba(20,30,36,.28);
+      --accent:#2fd3c6;
+      --accent2:#7bd0ff;
+      --warn:#ffd43b;
+      --danger:#ff6b6b;
+      --shadow: 0 18px 44px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 520px at 20% 0%, rgba(47,211,198,.18), transparent 55%),
+        radial-gradient(900px 420px at 90% 10%, rgba(123,208,255,.16), transparent 55%),
+        linear-gradient(180deg, #0b1217 0%, #0a0f14 100%);
+    }
+    header{
+      position: sticky; top:0; z-index: 50;
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+      background: rgba(8,12,16,.60);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .title{ font-weight:900; letter-spacing:-.2px; }
+    .sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+    .wrap{
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns:1fr; }
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--glass);
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+    .card.soft{ background: var(--glass2); box-shadow: 0 12px 32px rgba(0,0,0,.22); }
+    .muted{ color: var(--muted); font-size: 13px; }
+    .small{ color: var(--muted); font-size: 12px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width: 640px){ .grid2{ grid-template-columns:1fr; } }
+    label{ display:block; font-size:12px; color:var(--muted); font-weight:800; margin-bottom:6px; }
+    input, select{
+      width:100%;
+      border:1px solid rgba(255,255,255,.20);
+      border-radius: 14px;
+      padding:10px;
+      font:inherit;
+      color: var(--ink);
+      background: rgba(0,0,0,.18);
+    }
+    input:focus, select:focus{
+      outline:none;
+      border-color: rgba(47,211,198,.55);
+      box-shadow: 0 0 0 4px rgba(47,211,198,.16);
+    }
+    .btn{
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight:900;
+      transition:.12s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{ border-color: rgba(47,211,198,.35); background: rgba(47,211,198,.14); }
+    .btn.warn{ border-color: rgba(255,212,59,.35); background: rgba(255,212,59,.10); }
+    .btn.danger{ border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.10); }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      font-weight:900;
+    }
+
+    .scoreBox{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    @media (max-width: 640px){ .scoreBox{ grid-template-columns:1fr; } }
+
+    .result{
+      padding:14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.18);
+    }
+    .resTitle{ font-weight:900; font-size:18px; letter-spacing:-.2px; }
+    .resMode{ font-weight:1000; font-size:22px; margin-top:6px; }
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      overflow:hidden;
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,.14);
+    }
+    .bar > div{
+      height:100%;
+      width:50%;
+      background: linear-gradient(90deg, rgba(255,107,107,.85), rgba(255,212,59,.85), rgba(47,211,198,.85));
+    }
+    .explain{
+      margin-top:10px;
+      display:grid;
+      gap:10px;
+    }
+    .rule{
+      padding:12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+    }
+    .rule b{ display:block; margin-bottom:4px; }
+    .kpi{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin-top:10px;
+    }
+    .kpi > div{
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding:10px;
+      background: rgba(255,255,255,.05);
+    }
+    .kpi .num{ font-weight:1000; font-size:16px; }
+    .kpi .txt{ color:var(--muted); font-size:12px; }
+
+    .footerNote{ margin-top:10px; }
+    code{ color: rgba(123,208,255,.95); }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="title">📊 리스크 레짐 대시보드</div>
+    <div class="sub">입력값 → 가중치/규칙 점수화 → <b>공격 / 중립 / 방어</b> (예언 ❌, 포지션 레버리지 조절 ✅)</div>
+  </div>
+  <div class="row">
+    <button class="btn" id="btnDemo">데모값</button>
+    <button class="btn warn" id="btnReset">초기화</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div style="font-weight:1000; font-size:16px;">① 입력</div>
+        <div class="muted">가급적 “절대값”보다, 아래에 있는 <b>최근 범위/기준 대비 위치</b>로 넣는 걸 추천</div>
+      </div>
+      <button class="btn primary" id="btnCalc">평가하기</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.12); margin:12px 0;">
+
+    <div class="grid2">
+      <div>
+        <label>VIX</label>
+        <input id="vix" type="number" step="0.01" placeholder="예: 16.2">
+        <div class="small">규칙: 낮을수록 Risk-On, 높을수록 Risk-Off</div>
+      </div>
+      <div>
+        <label>VIX 1개월 변화(%)</label>
+        <input id="vixChg" type="number" step="0.1" placeholder="예: +12 / -8">
+        <div class="small">급등은 경고 신호(리스크오프)</div>
+      </div>
+
+      <div>
+        <label>S&P500: 200일선 대비(%)</label>
+        <input id="spx200" type="number" step="0.1" placeholder="예: +4.2 / -3.1">
+        <div class="small">추세 지표(위: Risk-On)</div>
+      </div>
+      <div>
+        <label>Nasdaq100: 200일선 대비(%)</label>
+        <input id="ndx200" type="number" step="0.1" placeholder="예: +6.0 / -5.0">
+        <div class="small">성장주 온도계(위: Risk-On)</div>
+      </div>
+
+      <div>
+        <label>BTC: 200일선 대비(%)</label>
+        <input id="btc200" type="number" step="0.1" placeholder="예: +10 / -12">
+        <div class="small">리스크 선호 온도(위: Risk-On)</div>
+      </div>
+      <div>
+        <label>USDKRW 3개월 변화(%)</label>
+        <input id="usdk" type="number" step="0.1" placeholder="예: +2.5 / -1.8">
+        <div class="small">원화 약세(+)는 스트레스 신호로 가점(-)</div>
+      </div>
+
+      <div>
+        <label>미국 10년물 금리 (선택)</label>
+        <input id="us10y" type="number" step="0.01" placeholder="예: 4.21">
+        <div class="small">극단 고금리/급등은 부담(모형에 약하게 반영)</div>
+      </div>
+      <div>
+        <label>하이일드 스프레드/리스크(선택)</label>
+        <select id="hy">
+          <option value="">미입력</option>
+          <option value="tight">타이트(안정)</option>
+          <option value="mid">중립</option>
+          <option value="wide">와이드(스트레스)</option>
+        </select>
+        <div class="small">크레딧 스트레스 레짐</div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.12); margin:12px 0;">
+
+    <div style="font-weight:1000; margin-bottom:6px;">② 가중치 (조절 가능)</div>
+    <div class="grid2">
+      <div>
+        <label>가중치: VIX</label>
+        <input id="wVix" type="number" step="0.1" value="2.0">
+      </div>
+      <div>
+        <label>가중치: 추세(SPX/NDX)</label>
+        <input id="wTrend" type="number" step="0.1" value="2.0">
+      </div>
+      <div>
+        <label>가중치: BTC</label>
+        <input id="wBtc" type="number" step="0.1" value="1.0">
+      </div>
+      <div>
+        <label>가중치: 환율(USDKRW)</label>
+        <input id="wFx" type="number" step="0.1" value="1.0">
+      </div>
+      <div>
+        <label>가중치: 금리(10Y)</label>
+        <input id="wRates" type="number" step="0.1" value="0.5">
+      </div>
+      <div>
+        <label>가중치: 하이일드</label>
+        <input id="wHy" type="number" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div class="footerNote small">
+      팁: 이건 “맞히기”가 아니라 <b>포지션 사이즈/현금비중</b>을 정하는 도구야. <br>
+      예: 공격=70~100%, 중립=40~70%, 방어=0~40% (개인 성향 따라 조정)
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:1000; font-size:16px;">③ 결과</div>
+    <div class="muted">점수는 -100(방어) ~ +100(공격)으로 정규화</div>
+
+    <div class="scoreBox">
+      <div class="result">
+        <div class="resTitle">레짐</div>
+        <div class="resMode" id="mode">-</div>
+        <div class="bar"><div id="barFill"></div></div>
+        <div class="small" id="scoreLine" style="margin-top:8px;">점수: -</div>
+      </div>
+
+      <div class="result">
+        <div class="resTitle">권고 포지션</div>
+        <div class="kpi">
+          <div>
+            <div class="num" id="allocRisk">-</div>
+            <div class="txt">위험자산 비중</div>
+          </div>
+          <div>
+            <div class="num" id="allocCash">-</div>
+            <div class="txt">현금/단기</div>
+          </div>
+          <div>
+            <div class="num" id="allocLev">-</div>
+            <div class="txt">레버리지</div>
+          </div>
+        </div>
+        <div class="small" style="margin-top:8px;" id="noteLine">-</div>
+      </div>
+    </div>
+
+    <div style="font-weight:1000; margin-top:12px;">④ 근거 (항목별 점수)</div>
+    <div class="explain" id="explain"></div>
+
+    <div class="small footerNote">
+      *주의: 투자 조언이 아니라 <b>리스크 관리용 체크리스트</b>입니다.  
+      “공격”이어도 분할/손절 규칙은 별도로 필요합니다.
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Helpers ---
+  const $ = (id) => document.getElementById(id);
+  const toNum = (v) => {
+    if (v === "" || v === null || v === undefined) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+  // --- Scoring rules (working theory; tweakable) ---
+  // Each subscore is in [-2 .. +2] range, then multiplied by weight.
+  function scoreVix(vix, vixChg){
+    let s = 0;
+    // Level
+    if (vix === null) return { s:0, detail:"미입력(0점)" };
+    if (vix <= 14) s += 1.5;
+    else if (vix <= 18) s += 0.8;
+    else if (vix <= 24) s += 0.0;
+    else if (vix <= 30) s += -1.0;
+    else s += -1.8;
+
+    // Change (monthly)
+    if (vixChg !== null){
+      if (vixChg >= 25) s += -1.2;
+      else if (vixChg >= 10) s += -0.7;
+      else if (vixChg <= -15) s += +0.4;
+    }
+
+    s = clamp(s, -2, 2);
+    return { s, detail:`VIX=${vix}${vixChg!==null?`, 1M=${vixChg}%`:``}` };
+  }
+
+  function scoreTrend(spx200, ndx200){
+    if (spx200 === null && ndx200 === null) return { s:0, detail:"미입력(0점)" };
+    let s = 0;
+    const one = (x) => {
+      if (x === null) return 0;
+      if (x >= 6) return +1.0;
+      if (x >= 0) return +0.6;
+      if (x >= -4) return -0.6;
+      return -1.2;
+    };
+    const sp = one(spx200);
+    const nd = one(ndx200);
+    // together
+    s = sp + nd;
+    // normalize to [-2..+2]
+    s = clamp(s, -2, 2);
+    return { s, detail:`SPX200=${spx200 ?? "NA"}%, NDX200=${ndx200 ?? "NA"}%` };
+  }
+
+  function scoreBtc(btc200){
+    if (btc200 === null) return { s:0, detail:"미입력(0점)" };
+    let s = 0;
+    if (btc200 >= 10) s = +1.0;
+    else if (btc200 >= 0) s = +0.4;
+    else if (btc200 >= -10) s = -0.4;
+    else s = -1.0;
+    return { s: clamp(s,-2,2), detail:`BTC200=${btc200}%` };
+  }
+
+  function scoreFx(usdk){
+    if (usdk === null) return { s:0, detail:"미입력(0점)" };
+    // +% means KRW weaker -> risk-off
+    let s = 0;
+    if (usdk >= 5) s = -1.0;
+    else if (usdk >= 2) s = -0.6;
+    else if (usdk >= -2) s = 0.0;
+    else s = +0.4; // KRW stronger often aligns with risk-on
+    return { s: clamp(s,-2,2), detail:`USDKRW 3M=${usdk}%` };
+  }
+
+  function scoreRates(us10y){
+    if (us10y === null) return { s:0, detail:"미입력(0점)" };
+    // very rough: extreme high yields tighten conditions
+    let s = 0;
+    if (us10y >= 5.0) s = -1.0;
+    else if (us10y >= 4.5) s = -0.6;
+    else if (us10y >= 3.5) s = 0.0;
+    else s = +0.2;
+    return { s: clamp(s,-2,2), detail:`US10Y=${us10y}%` };
+  }
+
+  function scoreHy(hy){
+    if (!hy) return { s:0, detail:"미입력(0점)" };
+    if (hy === "tight") return { s:+0.6, detail:"하이일드: 타이트" };
+    if (hy === "mid") return { s:0.0, detail:"하이일드: 중립" };
+    return { s:-1.0, detail:"하이일드: 와이드" };
+  }
+
+  function normalizeTo100(total, maxAbs){
+    if (maxAbs <= 0) return 0;
+    return clamp((total / maxAbs) * 100, -100, 100);
+  }
+
+  function decideMode(score100){
+    if (score100 >= 25) return "공격";
+    if (score100 <= -25) return "방어";
+    return "중립";
+  }
+
+  function allocation(mode){
+    // Simple recommendation; customize later
+    if (mode === "공격"){
+      return { risk:"70~100%", cash:"0~30%", lev:"가능(보수적으로)" , note:"추세 우호. 분할 진입 + 손절/헤지 룰 유지." };
+    }
+    if (mode === "방어"){
+      return { risk:"0~40%", cash:"60~100%", lev:"비권장", note:"변동성/스트레스 구간. 현금↑, 레버리지↓, 신호 안정화 대기." };
+    }
+    return { risk:"40~70%", cash:"30~60%", lev:"제한적", note:"혼합 레짐. 포지션 크기 줄이고, 확증 신호(추세/변동성) 확인." };
+  }
+
+  function calc(){
+    // inputs
+    const vix = toNum($("vix").value);
+    const vixChg = toNum($("vixChg").value);
+    const spx200 = toNum($("spx200").value);
+    const ndx200 = toNum($("ndx200").value);
+    const btc200 = toNum($("btc200").value);
+    const usdk = toNum($("usdk").value);
+    const us10y = toNum($("us10y").value);
+    const hy = $("hy").value;
+
+    // weights
+    const wVix = toNum($("wVix").value) ?? 0;
+    const wTrend = toNum($("wTrend").value) ?? 0;
+    const wBtc = toNum($("wBtc").value) ?? 0;
+    const wFx = toNum($("wFx").value) ?? 0;
+    const wRates = toNum($("wRates").value) ?? 0;
+    const wHy = toNum($("wHy").value) ?? 0;
+
+    const parts = [];
+
+    const p1 = scoreVix(vix, vixChg); parts.push({ name:"VIX(레짐)", raw:p1.s, w:wVix, detail:p1.detail });
+    const p2 = scoreTrend(spx200, ndx200); parts.push({ name:"추세(SPX/NDX)", raw:p2.s, w:wTrend, detail:p2.detail });
+    const p3 = scoreBtc(btc200); parts.push({ name:"BTC(리스크온)", raw:p3.s, w:wBtc, detail:p3.detail });
+    const p4 = scoreFx(usdk); parts.push({ name:"환율(USDKRW)", raw:p4.s, w:wFx, detail:p4.detail });
+    const p5 = scoreRates(us10y); parts.push({ name:"금리(US10Y)", raw:p5.s, w:wRates, detail:p5.detail });
+    const p6 = scoreHy(hy); parts.push({ name:"하이일드(크레딧)", raw:p6.s, w:wHy, detail:p6.detail });
+
+    // total weighted score
+    const total = parts.reduce((acc, p)=> acc + (p.raw * p.w), 0);
+
+    // max abs theoretical (raw bounded [-2..+2])
+    const maxAbs = parts.reduce((acc, p)=> acc + (2 * Math.abs(p.w)), 0);
+
+    const score100 = normalizeTo100(total, maxAbs);
+    const mode = decideMode(score100);
+
+    // UI
+    $("mode").textContent = mode;
+    $("scoreLine").textContent = `점수: ${score100.toFixed(1)} ( -100 방어 … +100 공격 )`;
+
+    // bar fill: map score [-100,100] to [0,100]
+    const pct = (score100 + 100) / 2;
+    $("barFill").style.width = `${pct}%`;
+
+    const alloc = allocation(mode);
+    $("allocRisk").textContent = alloc.risk;
+    $("allocCash").textContent = alloc.cash;
+    $("allocLev").textContent = alloc.lev;
+    $("noteLine").textContent = alloc.note;
+
+    // explain
+    const explain = $("explain");
+    explain.innerHTML = parts.map(p=>{
+      const contrib = p.raw * p.w;
+      const sign = contrib >= 0 ? "+" : "";
+      const rawTxt = p.raw.toFixed(2);
+      const wTxt = p.w.toFixed(2);
+      const cTxt = (contrib===0 ? "0.00" : (contrib).toFixed(2));
+      const mood =
+        contrib >= 1.0 ? "공격 기여" :
+        contrib <= -1.0 ? "방어 기여" :
+        "중립/미미";
+      return `
+        <div class="rule">
+          <b>${p.name} <span class="muted">(${mood})</span></b>
+          <div class="small">${p.detail}</div>
+          <div class="small">raw=${rawTxt}, weight=${wTxt} → contrib=${sign}${cTxt}</div>
+        </div>
+      `;
+    }).join("");
+
+    // persist last inputs (optional)
+    const state = {
+      vix, vixChg, spx200, ndx200, btc200, usdk, us10y, hy,
+      wVix, wTrend, wBtc, wFx, wRates, wHy
+    };
+    localStorage.setItem("risk_regime_v1", JSON.stringify(state));
+  }
+
+  function loadSaved(){
+    const s = safeParse(localStorage.getItem("risk_regime_v1") || "null", null);
+    if (!s) return;
+    const set = (id, v) => { if (v !== null && v !== undefined && v !== "") $(id).value = v; };
+    set("vix", s.vix); set("vixChg", s.vixChg);
+    set("spx200", s.spx200); set("ndx200", s.ndx200);
+    set("btc200", s.btc200); set("usdk", s.usdk);
+    set("us10y", s.us10y);
+    if (s.hy) $("hy").value = s.hy;
+
+    set("wVix", s.wVix); set("wTrend", s.wTrend); set("wBtc", s.wBtc);
+    set("wFx", s.wFx); set("wRates", s.wRates); set("wHy", s.wHy);
+  }
+
+  function demo(){
+    // Example values like your watchlist screenshot-ish
+    $("vix").value = 16.2;
+    $("vixChg").value = 5;
+    $("spx200").value = 3.5;
+    $("ndx200").value = 5.0;
+    $("btc200").value = 8.0;
+    $("usdk").value = 1.2;
+    $("us10y").value = 4.21;
+    $("hy").value = "mid";
+    calc();
+  }
+
+  function resetAll(){
+    ["vix","vixChg","spx200","ndx200","btc200","usdk","us10y"].forEach(id=>$(id).value="");
+    $("hy").value = "";
+    $("wVix").value = 2.0;
+    $("wTrend").value = 2.0;
+    $("wBtc").value = 1.0;
+    $("wFx").value = 1.0;
+    $("wRates").value = 0.5;
+    $("wHy").value = 1.0;
+    localStorage.removeItem("risk_regime_v1");
+    $("mode").textContent = "-";
+    $("scoreLine").textContent = "점수: -";
+    $("barFill").style.width = "50%";
+    $("allocRisk").textContent = "-";
+    $("allocCash").textContent = "-";
+    $("allocLev").textContent = "-";
+    $("noteLine").textContent = "-";
+    $("explain").innerHTML = "";
+  }
+
+  // wire
+  $("btnCalc").addEventListener("click", calc);
+  $("btnDemo").addEventListener("click", demo);
+  $("btnReset").addEventListener("click", resetAll);
+
+  loadSaved();
+</script>
+</body>
+</html>
